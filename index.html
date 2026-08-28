@@ -54,7 +54,17 @@ input,select,textarea{font-family:inherit;-webkit-user-select:text;user-select:t
 
 /* ================= tabs ================= */
 .tabs{flex:none;display:flex;background:var(--panel);border-bottom:1px solid var(--line)}
-.tabs button{flex:1;padding:9px 2px 7px;font-size:11.5px;font-weight:700;color:var(--dim);
+.sv{display:none;width:6px;height:6px;border-radius:50%;background:var(--mark);margin-right:4px;flex:none}
+.sv.on{display:inline-block}
+.sb .nm{display:flex;align-items:center;justify-content:center}
+.strip{flex:none;display:flex;align-items:stretch;gap:1px;height:14px;width:100%;padding:0 8px;
+  background:var(--ink);border-bottom:1px solid var(--line)}
+.strip i{flex:1;min-width:1px;display:block;position:relative}
+.strip i::after{content:'';position:absolute;left:0;right:0;height:5px}
+.strip i.w::after{top:1px;background:var(--pt)}
+.strip i.l::after{bottom:1px;background:var(--ls)}
+.strip .ph{flex:1;align-self:center;font-size:9px;color:var(--dim2);text-align:center}
+.tabs button{flex:1;padding:9px 2px 7px;font-size:11px;font-weight:700;color:var(--dim);
   border-bottom:2px solid transparent;letter-spacing:.02em}
 .tabs button.on{color:var(--text);border-bottom-color:var(--mark)}
 
@@ -79,6 +89,10 @@ svg.court{display:block;width:100%;height:100%;touch-action:none}
   padding:4px 8px;border-radius:7px;background:var(--panel);border:1px solid var(--line);margin-bottom:5px;
   white-space:nowrap;overflow:hidden}
 .lastline b{color:var(--text)}
+.banner{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;padding:7px 9px;
+  border-radius:8px;background:rgba(255,212,0,.13);border:1px solid rgba(255,212,0,.5);margin-bottom:5px}
+.banner button{flex:none;font-size:11px;font-weight:800;padding:5px 9px;border-radius:6px;background:var(--mark);color:#141821}
+.banner .x{background:transparent;color:var(--dim);border:1px solid var(--line)}
 .lastline .lt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lastline .sp{margin-left:auto;flex:none;display:flex;gap:4px}
 .tiny{font-size:10.5px;font-weight:700;padding:4px 7px;border-radius:6px;background:var(--panel2);
@@ -216,18 +230,21 @@ tr.total td:first-child{background:#2A2418}
 <div class="hdr">
   <button class="setbtn" id="setBtn"><span class="n" id="setN">1</span><span class="t">セット</span></button>
   <div class="sb">
-    <div class="col"><span class="nm" id="nmOwn">名工大</span><span class="num" id="scOwn">0</span></div>
+    <div class="col"><span class="nm"><i class="sv" id="svOwn"></i><span id="nmOwn">名工大</span></span><span class="num" id="scOwn">0</span></div>
     <span class="hy">–</span>
-    <div class="col"><span class="nm" id="nmOpp">相手校</span><span class="num" id="scOpp">0</span></div>
+    <div class="col"><span class="nm"><i class="sv" id="svOpp"></i><span id="nmOpp">相手校</span></span><span class="num" id="scOpp">0</span></div>
   </div>
   <button class="rotbtn" id="rotBtn"><span class="n" id="rotN">S1</span><span class="t">ローテ</span></button>
 </div>
+
+<button class="strip" id="strip" title="スコア推移"></button>
 
 <div class="tabs">
   <button data-tab="rec" class="on">記録</button>
   <button data-tab="list">一覧</button>
   <button data-tab="stat">成績</button>
-  <button data-tab="map">コース図</button>
+  <button data-tab="ana">分析</button>
+  <button data-tab="map">コース</button>
   <button data-tab="set">設定</button>
 </div>
 
@@ -240,6 +257,7 @@ tr.total td:first-child{background:#2A2418}
   </div>
 
   <div class="console">
+    <div class="banner" id="banner" style="display:none"></div>
     <div class="lastline" id="lastLine"></div>
 
     <div class="grid7" id="rostOwn"></div>
@@ -276,6 +294,35 @@ tr.total td:first-child{background:#2A2418}
   <div id="statBody"></div>
 </div>
 
+<!-- ============ 分析 ============ -->
+<div class="page" id="page-ana">
+  <div class="rowline" style="margin:0 0 9px">
+    <select id="anaSet" style="background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px 10px;font-size:13px"></select>
+  </div>
+  <div class="hd">ローテ別 SO率・Break率</div>
+  <div id="rotBody"></div>
+  <div class="note"><b style="color:var(--text)">SO率</b>＝相手サーブを受けて取れた割合。<b style="color:var(--text)">Break率</b>＝自チームのサーブで取れた割合。
+  サーブ権はセット最初のサーブ権から自動で計算しています（セットボタンから変更できます）。</div>
+
+  <div class="hd">貢献度ランキング</div>
+  <div id="contBody"></div>
+  <div class="note">貢献度＝得点になったプレー +1、失点になったプレー −1、それ以外は質に応じた重み付け（設定に一覧）。
+  <b style="color:var(--text)">/S</b> はその選手が出たセット数で割った 1 セット平均です。</div>
+
+  <div class="hd">選手の比較</div>
+  <div class="rowline" style="margin:0 0 8px">
+    <select id="scAction" style="background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px 10px;font-size:13px">
+      <option value="attack">アタック（全体）</option>
+      <option value="serve">サーブ</option>
+      <option value="recep">レセプション</option>
+    </select>
+  </div>
+  <div id="scatBody"></div>
+
+  <div class="hd">得点・失点の内訳</div>
+  <div id="breakBody"></div>
+</div>
+
 <!-- ============ コース図 ============ -->
 <div class="page" id="page-map">
   <div class="field"><label>スキル</label><select id="fSkill"></select></div>
@@ -310,6 +357,8 @@ tr.total td:first-child{background:#2A2418}
   <div class="hd">動作</div>
   <button class="sw" id="optCoord"><span>コース入力を必須にする<span class="sub">オフなら、コートを押さなくても評価だけで記録できます</span></span><span class="kn"></span></button>
   <button class="sw" id="optSuggest"><span>次のスキルを先に選んでおく<span class="sub">レセプション→REアタックなど、流れから予測します</span></span><span class="kn"></span></button>
+  <button class="sw" id="optAutoRot"><span>ローテとサーブ権を自動計算<span class="sub">サイドアウトのたびにローテを1つ進めます。ずれたらヘッダーで直せます</span></span><span class="kn"></span></button>
+  <button class="sw" id="optRotDir"><span>ローテの向き S1→S2…<span class="sub">オフ（既定）は S1→S6→S5… の順。セッター位置で数えるならこちら</span></span><span class="kn"></span></button>
   <button class="sw" id="optZone"><span>ゾーン番号を表示<span class="sub">コートに 1〜6 の位置番号を薄く出します</span></span><span class="kn"></span></button>
   <button class="sw" id="optWake"><span>画面を消さない<span class="sub">試合中スリープしません（電池を使います）</span></span><span class="kn"></span></button>
   <button class="sw" id="optVib"><span>記録時に振動<span class="sub">得点・失点で長さが変わります</span></span><span class="kn"></span></button>
@@ -346,6 +395,8 @@ tr.total td:first-child{background:#2A2418}
   <div class="sep"></div>
   <div class="hd">アプリ</div>
   <button class="big" id="btnUpdate">最新版に更新する</button>
+  <div class="hd">貢献度の重み</div>
+  <div class="note" id="wBody"></div>
   <div class="hd">用語</div>
   <div class="note" id="glossBody"></div>
   <div class="hd">評価基準</div>
@@ -426,10 +477,11 @@ const store={
 function blank(){return{
   v:6,match:'',own:'名工大',opp:'相手校',
   rostOwn:new Array(14).fill(''),rostOpp:new Array(14).fill(''),
-  set:1,rot:'S1',events:[],
+  set:1,rot:'S1',events:[],serveFirst:{},rot0:{},
   cur:{taps:[],ot:false,skill:'',serve:'',toss:'',spike:'',pOwn:'',pOpp:''},
-  opt:{coord:false,suggest:true,zone:true,wake:true,vib:true,oppRoster:false}
+  opt:{coord:false,suggest:true,zone:true,wake:true,vib:true,oppRoster:false,autoRot:true,rotDir:'down'}
 };}
+let DER={},RALLY=[],setEndSeen={};
 let S=blank(), saveT=null;
 const save=()=>{clearTimeout(saveT);saveT=setTimeout(()=>store.set(KEY,JSON.stringify(S)),160);};
 
@@ -456,19 +508,55 @@ function judge(skill,sym,pOwn){
   }
   return{h:0,a:0,reason:null};
 }
-/* スコアはイベントから毎回作り直す（途中の削除・修正に対応） */
+/* ローテは 1→6→5→4→3→2 の順に回る（セッター位置表記の標準）。設定で逆順にもできる */
+function rotStep(r,dir){const i=ROTS.indexOf(r);if(i<0)return 'S1';return ROTS[(i+(dir<0?5:1))%6];}
+function guessServe(list){
+  for(const e of list){ if(e.skill==='サーブ')return 'own'; if(e.skill==='レセプション')return 'opp'; }
+  return 'own';
+}
+/* スコア・サーブ権・ローテを毎回イベントから作り直す（途中の削除・修正に対応） */
 function recalc(){
-  let cs=null,h=0,a=0;
-  S.events.forEach(e=>{
-    if(Number(e.set)!==cs){cs=Number(e.set);h=0;a=0;}
-    const j=judge(e.skill,e.ev,e.pOwn);
-    h+=j.h;a+=j.a;e.sh=h;e.sa=a;e.reason=j.reason;
+  DER={};RALLY=[];
+  const dir=S.opt.rotDir==='up'?1:-1;
+  const sets=[...new Set(S.events.map(e=>Number(e.set)))];
+  if(sets.indexOf(Number(S.set))<0)sets.push(Number(S.set));
+  sets.sort((a,b)=>a-b).forEach(set=>{
+    const list=S.events.filter(e=>Number(e.set)===set);
+    let h=0,a=0,serving=S.serveFirst[set]||guessServe(list),rot=S.rot0[set]||'S1';
+    list.forEach(e=>{
+      e._sv=serving;
+      if(S.opt.autoRot)e.rot=rot;
+      const j=judge(e.skill,e.ev,e.pOwn);
+      h+=j.h;a+=j.a;e.sh=h;e.sa=a;e.reason=j.reason;
+      if(j.h||j.a){
+        const won=j.h===1;
+        RALLY.push({set,rot,serving,won,sh:h,sa:a});
+        if(won&&serving==='opp')rot=rotStep(rot,dir);
+        serving=won?'own':'opp';
+      }
+    });
+    DER[set]={serving,rot,h,a};
   });
 }
-function curScore(){
-  for(let i=S.events.length-1;i>=0;i--) if(Number(S.events[i].set)===Number(S.set))
-    return{h:S.events[i].sh,a:S.events[i].sa};
-  return{h:0,a:0};
+const curScore=()=>{const d=DER[S.set];return d?{h:d.h,a:d.a}:{h:0,a:0};};
+const curRot=()=>S.opt.autoRot?((DER[S.set]&&DER[S.set].rot)||S.rot0[S.set]||'S1'):S.rot;
+const curServe=()=>(DER[S.set]&&DER[S.set].serving)||S.serveFirst[S.set]||'own';
+/* セット終了の目安（5セット目は15点） */
+function setEnd(){
+  const d=DER[S.set];if(!d)return null;
+  const t=Number(S.set)>=5?15:25;
+  return (Math.max(d.h,d.a)>=t&&Math.abs(d.h-d.a)>=2)?d:null;
+}
+/* 貢献度：得点=+1／失点=−1、それ以外は質に応じた小さな重み */
+const WEIGHT={'サーブ':{'+':0.4,'!':0.2,'/':0.4,'-':-0.2},
+  'レセプション':{'#':0.4,'+':0.2,'/':-0.2,'-':-0.4},
+  attack:{'+':0.3,'!':0,'-':-0.15},'ブロック':{'+':0.3,'-':0}};
+WEIGHT['ディグ']=WEIGHT['レセプション'];
+function contrib(e){
+  const j=judge(e.skill,e.ev,e.pOwn);
+  if(j.h)return 1; if(j.a)return -1;
+  const t=ATTACKS.indexOf(e.skill)>=0?WEIGHT.attack:WEIGHT[e.skill];
+  return (t&&t[e.ev]!=null)?t[e.ev]:0;
 }
 function setCount(){
   let w=0,l=0;
@@ -603,16 +691,17 @@ courtEl.addEventListener('pointercancel',endDrag);
 
 /* ---------------- ボタン生成 ---------------- */
 function mk(cls,label,on){const b=document.createElement('button');b.className=cls;b.textContent=label;b.onclick=on;return b;}
-function fill(el,items,getv,setv,cls){
+function fill(el,items,getv,setv,cls,noToggle){
   el.innerHTML='';
-  items.forEach(it=>{const b=mk('b '+(cls||'op')+(it.cls?' '+it.cls:''),it.label,()=>setv(getv()===it.value?'':it.value));
+  items.forEach(it=>{const b=mk('b '+(cls||'op')+(it.cls?' '+it.cls:''),it.label,
+    ()=>setv((!noToggle&&getv()===it.value)?'':it.value));
     if(it.sub)b.innerHTML='<span class="m">'+esc(it.label)+'</span><span class="s">'+esc(it.sub)+'</span>';
     b.dataset.v=it.value;el.appendChild(b);});
 }
 const mark=(el,v)=>Array.from(el.children).forEach(b=>b.classList.toggle('on',v!==''&&b.dataset.v===v));
 
-fill($('#skillA'),SKILLS.slice(0,4).map(s=>({value:s.k,label:s.l,sub:s.sub})),()=>S.cur.skill,setSkill,'sk');
-fill($('#skillB'),SKILLS.slice(4).map(s=>({value:s.k,label:s.l,sub:s.sub})),()=>S.cur.skill,setSkill,'sk');
+fill($('#skillA'),SKILLS.slice(0,4).map(s=>({value:s.k,label:s.l,sub:s.sub})),()=>S.cur.skill,setSkill,'sk',true);
+fill($('#skillB'),SKILLS.slice(4).map(s=>({value:s.k,label:s.l,sub:s.sub})),()=>S.cur.skill,setSkill,'sk',true);
 fill($('#serveRow'),SERVES.map(s=>({value:s,label:SERVE_L[s]})),()=>S.cur.serve,v=>{S.cur.serve=v;render();});
 fill($('#tossRow'),TOSSES.map(s=>({value:s,label:TOSS_L[s]||s})),()=>S.cur.toss,v=>{S.cur.toss=v;render();});
 fill($('#spikeRow'),SPIKES.map(s=>({value:s.k,label:s.k,cls:s.c})),()=>S.cur.spike,v=>{S.cur.spike=v;render();});
@@ -654,7 +743,7 @@ function record(sym){
   const st=hasC?t[0]:null, en=hasC?t[t.length-1]:null, md=t.length>=3?t[1]:null;
   const e={sx:st?st.c:'',sy:st?st.r:'',ex:en?en.c:'',ey:en?en.r:'',mx:md?md.c:'',my:md?md.r:'',
     skill:c.skill,pOwn:c.pOwn,pOpp:c.pOpp,serve:c.serve,toss:c.toss,spike:c.spike,ev:sym,
-    sh:0,sa:0,set:S.set,rot:S.rot,reason:null,ts:Date.now()};
+    sh:0,sa:0,set:S.set,rot:curRot(),reason:null,ts:Date.now()};
   S.events.push(e);recalc();
   const j=judge(e.skill,sym,e.pOwn);
   if(j.h)flash('pt'); else if(j.a)flash('ls');
@@ -666,7 +755,7 @@ function record(sym){
 }
 function direct(isPt){
   S.events.push({sx:'',sy:'',ex:'',ey:'',mx:'',my:'',skill:'直接入力',pOwn:S.cur.pOwn,pOpp:'',
-    serve:'',toss:'',spike:'',ev:isPt?'#':'=',sh:0,sa:0,set:S.set,rot:S.rot,reason:null,ts:Date.now()});
+    serve:'',toss:'',spike:'',ev:isPt?'#':'=',sh:0,sa:0,set:S.set,rot:curRot(),reason:null,ts:Date.now()});
   recalc();flash(isPt?'pt':'ls');buzz({h:isPt?1:0,a:isPt?0:1});
   const l=S.events[S.events.length-1];
   S.cur={taps:[],ot:false,skill:'',serve:'',toss:'',spike:'',pOwn:'',pOpp:''};
@@ -708,7 +797,10 @@ function updateLast(){
 /* ---------------- 全体更新 ---------------- */
 function render(){
   const c=S.cur,sc=curScore(),st=setCount();
-  $('#setN').textContent=S.set; $('#rotN').textContent=S.rot;
+  $('#setN').textContent=S.set; $('#rotN').textContent=curRot();
+  const sv=curServe();
+  $('#svOwn').classList.toggle('on',sv==='own'); $('#svOpp').classList.toggle('on',sv==='opp');
+  drawStrip(); drawBanner();
   $('#nmOwn').textContent=(S.own||'自チーム')+(st.w+st.l?' ('+st.w+')':'');
   $('#nmOpp').textContent=(S.opp||'相手')+(st.w+st.l?' ('+st.l+')':'');
   $('#scOwn').textContent=sc.h; $('#scOpp').textContent=sc.a;
@@ -736,7 +828,125 @@ function render(){
   if($('#page-list').classList.contains('on'))renderList();
   if($('#page-stat').classList.contains('on'))renderStat();
   if($('#page-map').classList.contains('on'))renderMapUI();
+  if($('#page-ana').classList.contains('on'))renderAna();
 }
+
+/* ---------------- スコア推移バー・セット終了の案内 ---------------- */
+function drawStrip(){
+  const r=RALLY.filter(x=>x.set===Number(S.set));
+  $('#strip').innerHTML=r.length?r.map(x=>'<i class="'+(x.won?'w':'l')+'"></i>').join('')
+    :'<span class="ph">スコア推移（記録するとここに出ます）</span>';
+}
+$('#strip').onclick=()=>{
+  $$('.tabs button').forEach(x=>x.classList.toggle('on',x.dataset.tab==='list'));
+  $$('.page').forEach(p=>p.classList.toggle('on',p.id==='page-list'));renderList();
+};
+function drawBanner(){
+  const e=setEnd(),b=$('#banner');
+  if(!e||setEndSeen[S.set]){b.style.display='none';return;}
+  b.style.display='';
+  b.innerHTML='<span>第'+S.set+'セット '+e.h+'-'+e.a+'　'+(e.h>e.a?'勝ち':'負け')+'で終了？</span>'+
+    '<button id="bnNext" style="margin-left:auto">次のセットへ</button><button class="x" id="bnX">閉じる</button>';
+  $('#bnNext').onclick=()=>{nextSet();};
+  $('#bnX').onclick=()=>{setEndSeen[S.set]=true;drawBanner();};
+}
+function nextSet(){
+  S.set=Number(S.set)+1;
+  if(!S.serveFirst[S.set])S.serveFirst[S.set]=curServe()==='own'?'opp':'own';
+  if(!S.rot0[S.set])S.rot0[S.set]=S.rot0[S.set-1]||'S1';
+  S.cur=blank().cur;recalc();render();save();toast('第'+S.set+'セットへ');
+}
+
+/* ---------------- 分析 ---------------- */
+function anaSetNo(){const v=$('#anaSet').value;return v===''?null:Number(v);}
+function renderAna(){
+  const sets=[...new Set(S.events.map(e=>Number(e.set)))].sort((a,b)=>a-b),cv=$('#anaSet').value;
+  $('#anaSet').innerHTML='<option value="">全セット合算</option>'+sets.map(x=>'<option value="'+x+'">第'+x+'セットのみ</option>').join('');
+  $('#anaSet').value=sets.map(String).indexOf(cv)>=0?cv:'';
+  const setNo=anaSetNo();
+  const list=S.events.filter(e=>setNo==null||Number(e.set)===setNo);
+
+  /* --- ローテ別 --- */
+  const rr=ROTS.map(r=>({r,soW:0,soN:0,brW:0,brN:0}));
+  RALLY.forEach(x=>{ if(setNo!=null&&x.set!==setNo)return;
+    const o=rr.find(y=>y.r===x.rot); if(!o)return;
+    if(x.serving==='opp'){o.soN++;if(x.won)o.soW++;} else {o.brN++;if(x.won)o.brW++;} });
+  const bar=(v,c)=>'<div style="position:relative"><div style="position:absolute;inset:0;width:'+
+    Math.round(v*100)+'%;background:'+c+';opacity:.22;border-radius:3px"></div><span style="position:relative">'+
+    (v*100).toFixed(0)+'%</span></div>';
+  if(!RALLY.length){$('#rotBody').innerHTML='<div class="empty-note">得点・失点が入るとここに出ます。</div>';}
+  else{
+    let h='<div class="tw"><table><thead><tr><th>ローテ</th><th>SO 取/計</th><th>SO率</th><th>Break 取/計</th><th>Break率</th><th>得点</th></tr></thead><tbody>';
+    rr.forEach(o=>{ if(!o.soN&&!o.brN)return;
+      h+='<tr><td>'+o.r+'</td><td>'+o.soW+'/'+o.soN+'</td><td>'+(o.soN?bar(o.soW/o.soN,'#2ECC71'):'—')+'</td>'+
+         '<td>'+o.brW+'/'+o.brN+'</td><td>'+(o.brN?bar(o.brW/o.brN,'#3355FF'):'—')+'</td>'+
+         '<td>'+(o.soW+o.brW)+'</td></tr>'; });
+    $('#rotBody').innerHTML=h+'</tbody></table></div>';
+  }
+
+  /* --- 貢献度 --- */
+  const names=[];S.events.forEach(e=>{if(e.pOwn&&names.indexOf(e.pOwn)<0)names.push(e.pOwn);});
+  if(!names.length){$('#contBody').innerHTML='<div class="empty-note">まだ記録がありません。</div>';}
+  else{
+    const rows=names.map(p=>{
+      const my=list.filter(e=>e.pOwn===p);
+      const sN=new Set(S.events.filter(e=>e.pOwn===p&&(setNo==null||Number(e.set)===setNo)).map(e=>Number(e.set))).size||1;
+      let pt=0,ls=0,c=0;
+      my.forEach(e=>{const j=judge(e.skill,e.ev,e.pOwn);pt+=j.h;ls+=j.a;c+=contrib(e);});
+      return{p,n:my.length,sets:sN,pt,ls,c,cs:c/sN,er:my.length?c/my.length:0};
+    }).sort((a,b)=>b.cs-a.cs);
+    const col=v=>v>0?'color:var(--pt)':(v<0?'color:var(--ls)':'color:var(--dim)');
+    let h='<div class="tw"><table><thead><tr><th>選手</th><th>出場S</th><th>本数</th><th>得点</th><th>失点</th><th>貢献度</th><th>貢献度/S</th><th>効果率/本</th></tr></thead><tbody>';
+    rows.forEach((o,i)=>{h+='<tr><td>'+(i+1)+'. '+esc(o.p)+'</td><td>'+o.sets+'S</td><td>'+o.n+'</td>'+
+      '<td>'+o.pt+'</td><td>'+o.ls+'</td><td style="'+col(o.c)+'">'+(o.c>0?'+':'')+o.c.toFixed(1)+'</td>'+
+      '<td style="'+col(o.cs)+'">'+(o.cs>0?'+':'')+o.cs.toFixed(2)+'</td>'+
+      '<td style="'+col(o.er)+'">'+(o.er>0?'+':'')+o.er.toFixed(2)+'</td></tr>';});
+    $('#contBody').innerHTML=h+'</tbody></table></div>';
+    drawScatter(list,names,setNo);
+  }
+
+  /* --- 得点・失点の内訳 --- */
+  const rp={},rl={};
+  list.forEach(e=>{const j=judge(e.skill,e.ev,e.pOwn);if(!e.reason)return;
+    if(j.h)rp[e.reason]=(rp[e.reason]||0)+1; else rl[e.reason]=(rl[e.reason]||0)+1;});
+  const blk=(o,c,t)=>{const ks=Object.keys(o).sort((a,b)=>o[b]-o[a]);const tot=ks.reduce((x,k)=>x+o[k],0);
+    if(!tot)return '<div class="note">'+t+'：まだありません</div>';
+    return '<div style="margin-bottom:12px"><div class="glab" style="width:auto;text-align:left;margin-bottom:5px">'+t+' 計'+tot+'</div>'+
+      ks.map(k=>'<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;margin-bottom:3px">'+
+      '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(k)+'</span>'+
+      '<span style="flex:1.4;height:7px;border-radius:4px;background:var(--panel2);overflow:hidden"><i style="display:block;height:100%;width:'+
+      Math.round(o[k]/tot*100)+'%;background:'+c+'"></i></span>'+
+      '<span style="width:34px;text-align:right;font-variant-numeric:tabular-nums">'+o[k]+'</span></div>').join('')+'</div>';};
+  $('#breakBody').innerHTML=blk(rp,'#2ECC71','得点の要因')+blk(rl,'#FF5D5D','失点の要因');
+}
+function drawScatter(list,names,setNo){
+  const kind=$('#scAction').value;
+  const pick=e=>kind==='serve'?e.skill==='サーブ':(kind==='recep'?e.skill==='レセプション':
+    (ATTACKS.indexOf(e.skill)>=0&&e.spike!=='チャンス'));
+  const pts=names.map(p=>{
+    const my=list.filter(e=>e.pOwn===p&&pick(e));
+    if(!my.length)return null;
+    const sN=new Set(my.map(e=>Number(e.set))).size||1;
+    let c=0;my.forEach(e=>c+=contrib(e));
+    return{p,x:my.length/sN,y:c/my.length};
+  }).filter(Boolean);
+  if(!pts.length){$('#scatBody').innerHTML='<div class="empty-note">このアクションの記録がありません。</div>';return;}
+  const W=320,H=210,L=34,B=26,T=10,R=10;
+  const xm=Math.max(1,Math.ceil(Math.max.apply(null,pts.map(o=>o.x))*1.15));
+  const ya=Math.max(0.4,Math.max.apply(null,pts.map(o=>Math.abs(o.y)))*1.2);
+  const X=v=>L+(v/xm)*(W-L-R), Y=v=>T+((ya-v)/(2*ya))*(H-T-B);
+  let g='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px">';
+  g+='<line x1="'+L+'" y1="'+Y(0)+'" x2="'+(W-R)+'" y2="'+Y(0)+'" stroke="#4A5563" stroke-width="1"/>';
+  g+='<line x1="'+L+'" y1="'+T+'" x2="'+L+'" y2="'+(H-B)+'" stroke="#4A5563" stroke-width="1"/>';
+  [ya,0,-ya].forEach(v=>{g+='<text x="'+(L-5)+'" y="'+(Y(v)+3)+'" font-size="8" fill="#8F99A8" text-anchor="end">'+(v>0?'+':'')+v.toFixed(1)+'</text>';});
+  g+='<text x="'+(W/2)+'" y="'+(H-6)+'" font-size="9" fill="#8F99A8" text-anchor="middle">1セットあたりの本数</text>';
+  g+='<text x="10" y="'+(T+8)+'" font-size="9" fill="#8F99A8">効果率/本</text>';
+  pts.forEach(o=>{const cx=X(o.x),cy=Y(o.y),c=o.y>0?'#2ECC71':(o.y<0?'#FF5D5D':'#98A2AF');
+    g+='<circle cx="'+cx+'" cy="'+cy+'" r="5" fill="'+c+'" opacity=".85"/>'+
+       '<text x="'+(cx+8)+'" y="'+(cy+3.5)+'" font-size="9.5" font-weight="700" fill="#EDF1F6">'+esc(o.p)+'</text>';});
+  $('#scatBody').innerHTML=g+'</svg>';
+}
+$('#anaSet').onchange=renderAna; $('#scAction').onchange=renderAna;
 
 /* ---------------- 一覧・編集 ---------------- */
 let listPtOnly=false;
@@ -984,17 +1194,35 @@ function parseCsv(t){const rows=[];let row=[],c='',q=false;
   if(c!==''||row.length){row.push(c);rows.push(row);}return rows;}
 
 /* ---------------- ヘッダー操作 ---------------- */
-$('#rotBtn').onclick=()=>{S.rot=ROTS[(ROTS.indexOf(S.rot)+1)%6];render();save();};
-$('#setBtn').onclick=()=>{
-  $('#sheetBody').innerHTML='<h3>セット</h3><div class="rowline wrapy" style="margin:0">'+
-    [1,2,3,4,5].map(n=>`<button class="b op ${S.set===n?'on':''}" data-s="${n}" style="height:44px;font-size:15px">第${n}</button>`).join('')+
-    '</div><button class="big go" style="margin-top:14px" id="okSet">閉じる</button>';
-  $('#sheetBody').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{S.set=Number(b.dataset.s);closeSheet();render();save();toast('第'+S.set+'セット');});
-  $('#okSet').onclick=closeSheet;openSheet();
+$('#rotBtn').onclick=()=>{
+  const dir=S.opt.rotDir==='up'?1:-1;
+  if(S.opt.autoRot)S.rot0[S.set]=rotStep(S.rot0[S.set]||'S1',dir);
+  else S.rot=rotStep(S.rot,dir);
+  recalc();render();save();
 };
-$('#btnNextSet').onclick=()=>{S.set++;S.cur={taps:[],ot:false,skill:'',serve:'',toss:'',spike:'',pOwn:'',pOpp:''};render();save();toast('第'+S.set+'セットへ');};
+function setSheet(){
+  const sv=S.serveFirst[S.set]||guessServe(S.events.filter(e=>Number(e.set)===Number(S.set)));
+  const r0=S.rot0[S.set]||'S1';
+  $('#sheetBody').innerHTML='<h3>セット</h3>'+
+    '<div class="rowline wrapy" style="margin:0">'+[1,2,3,4,5].map(n=>
+      '<button class="b op'+(Number(S.set)===n?' on':'')+'" data-s="'+n+'" style="height:44px;font-size:15px">第'+n+'</button>').join('')+'</div>'+
+    '<div class="rowline" style="margin-top:12px"><span class="glab">最初の<br>サーブ</span><div class="rowline" style="flex:1;margin:0">'+
+      '<button class="b op'+(sv==='own'?' on':'')+'" data-sv="own" style="height:40px">'+esc(S.own||'自チーム')+'</button>'+
+      '<button class="b op'+(sv==='opp'?' on':'')+'" data-sv="opp" style="height:40px">'+esc(S.opp||'相手')+'</button></div></div>'+
+    '<div class="rowline" style="margin-top:8px"><span class="glab">開始<br>ローテ</span><div class="rowline wrapy" style="flex:1;margin:0">'+
+      ROTS.map(r=>'<button class="b op'+(r0===r?' on':'')+'" data-r0="'+r+'" style="height:40px">'+r+'</button>').join('')+'</div></div>'+
+    '<div class="note">サーブ権とローテは、ここを起点に得点のたび自動で計算されます。'+
+    '途中でずれたらヘッダーの「ローテ」を押して合わせてください。</div>'+
+    '<button class="big go" style="margin-top:12px" id="okSet">閉じる</button>';
+  $('#sheetBody').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{S.set=Number(b.dataset.s);recalc();setSheet();render();save();});
+  $('#sheetBody').querySelectorAll('[data-sv]').forEach(b=>b.onclick=()=>{S.serveFirst[S.set]=b.dataset.sv;recalc();setSheet();render();save();});
+  $('#sheetBody').querySelectorAll('[data-r0]').forEach(b=>b.onclick=()=>{S.rot0[S.set]=b.dataset.r0;recalc();setSheet();render();save();});
+  $('#okSet').onclick=closeSheet;openSheet();
+}
+$('#setBtn').onclick=setSheet;
+$('#btnNextSet').onclick=nextSet;
 $('#btnNewGame').onclick=()=>{if(!confirm('記録を消して第1セットから始めます。\n先に「Excelへコピー」または CSV を書き出してください。'))return;
-  S.events=[];S.set=1;S.rot='S1';S.cur=blank().cur;render();save();toast('新しい試合を開始しました');};
+  S.events=[];S.set=1;S.rot='S1';S.serveFirst={};S.rot0={};setEndSeen={};S.cur=blank().cur;recalc();render();save();toast('新しい試合を開始しました');};
 $('#btnClearNames').onclick=()=>{if(!confirm('名簿をすべて消しますか？'))return;
   S.rostOwn=new Array(14).fill('');S.rostOpp=new Array(14).fill('');regs();render();save();};
 $('#btnClearAll').onclick=()=>{if(!confirm('記録をすべて消しますか？元に戻せません。'))return;
@@ -1008,6 +1236,7 @@ $$('.tabs button').forEach(b=>b.onclick=()=>{
   if(b.dataset.tab==='stat')renderStat();
   if(b.dataset.tab==='list')renderList();
   if(b.dataset.tab==='map')renderMapUI();
+  if(b.dataset.tab==='ana')renderAna();
   if(b.dataset.tab==='rec')drawCourt();
 });
 
@@ -1022,11 +1251,24 @@ function regs(){
 $('#inOwn').oninput=e=>{S.own=e.target.value;render();save();};
 $('#inOpp').oninput=e=>{S.opp=e.target.value;render();save();};
 $('#inMatch').oninput=e=>{S.match=e.target.value;save();};
-const OPTS=[['optCoord','coord'],['optSuggest','suggest'],['optZone','zone'],['optWake','wake'],['optVib','vib'],['optOppRoster','oppRoster']];
+const OPTS=[['optCoord','coord'],['optSuggest','suggest'],['optAutoRot','autoRot'],['optZone','zone'],['optWake','wake'],['optVib','vib'],['optOppRoster','oppRoster']];
 OPTS.forEach(([id,k])=>{$('#'+id).onclick=()=>{S.opt[k]=!S.opt[k];syncOpts();
-  if(k==='wake')wake(S.opt[k]);render();save();};});
-function syncOpts(){OPTS.forEach(([id,k])=>$('#'+id).classList.toggle('on',!!S.opt[k]));}
+  if(k==='wake')wake(S.opt[k]);recalc();render();save();};});
+$('#optRotDir').onclick=()=>{S.opt.rotDir=S.opt.rotDir==='up'?'down':'up';syncOpts();recalc();render();save();
+  toast(S.opt.rotDir==='up'?'S1→S2→S3… の順':'S1→S6→S5… の順');};
+function syncOpts(){OPTS.forEach(([id,k])=>$('#'+id).classList.toggle('on',!!S.opt[k]));
+  $('#optRotDir').classList.toggle('on',S.opt.rotDir==='up');}
 function syncForm(){$('#inOwn').value=S.own;$('#inOpp').value=S.opp;$('#inMatch').value=S.match||'';regs();syncOpts();}
+
+/* 貢献度の重み一覧 */
+(function(){
+  const rows=[['得点になったプレー','+1.0'],['失点になったプレー','−1.0'],
+    ['サーブ ＋(優) / !(良)','+0.4 / +0.2'],['サーブ /(半得点) / −(不良)','+0.4 / −0.2'],
+    ['レセプ・ディグ #(A) / ＋(B)','+0.4 / +0.2'],['レセプ・ディグ /(C) / −(D)','−0.2 / −0.4'],
+    ['アタック ＋(良) / −(可)','+0.3 / −0.15'],['ブロック ＋(良)','+0.3']];
+  $('#wBody').innerHTML='<div class="tw" style="background:transparent;border:0"><table style="min-width:0">'+
+    rows.map(([a,b])=>'<tr><td style="background:transparent">'+esc(a)+'</td><td>'+esc(b)+'</td></tr>').join('')+'</table></div>';
+})();
 
 /* 用語のかんたん説明 */
 (function(){
@@ -1037,7 +1279,10 @@ function syncForm(){$('#inOwn').value=S.own;$('#inOpp').value=S.opp;$('#inMatch'
     ['バック','バックアタック。後衛からアタックラインの後ろで打つ攻撃'],
     ['ワンタッチ','3点入力のこと。始点→タッチ点→終点の順にコートを押します（ブロックは自動でこれになります）'],
     ['ローテ','S1〜S6。セッターの位置で表すローテーション'],
-    ['チャンス','攻撃としてカウントしない返球。成績表の本数から外れます']];
+    ['チャンス','攻撃としてカウントしない返球。成績表の本数から外れます'],
+    ['SO率','サイドアウト率。相手サーブを受けたラリーで得点できた割合'],
+    ['Break率','自チームのサーブで始まったラリーで得点できた割合'],
+    ['貢献度','1プレーごとの良し悪しを足し合わせた数。/S は出場セット数で割った平均']];
   $('#glossBody').innerHTML=G.map(([a,b])=>'<div style="margin-bottom:7px"><b style="color:var(--text)">'+esc(a)+'</b>　'+esc(b)+'</div>').join('');
 })();
 
@@ -1062,7 +1307,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 document.addEventListener('pointerdown',function once(){document.removeEventListener('pointerdown',once);if(S.opt.wake)wake(true);},{once:true});
 
 /* ---------------- Service Worker ---------------- */
-const APP_VER='ver.6.1';
+const APP_VER='ver.7.0';
 $('#verLine').textContent='バレー記録 '+APP_VER;
 $('#btnUpdate').onclick=async()=>{toast('最新版を確認しています…');
   try{if('serviceWorker'in navigator){const r=await navigator.serviceWorker.getRegistration();if(r)await r.update();}}catch(e){}
