@@ -100,9 +100,11 @@ svg.court{display:block;width:100%;height:100%;touch-action:none}
 .b.pl{height:38px;font-size:14px}
 .b.pl.empty{color:var(--dim2);border-style:dashed;font-weight:500}
 .b.pl.opp.on{background:var(--free);color:#0E1116;border-color:var(--free)}
-.b.sk{height:36px;font-size:12.5px;flex:1;min-width:0}
-.b.sk.sug::after{content:'';width:5px;height:5px;border-radius:50%;background:var(--mark);margin-left:5px;flex:none}
-.b.sk.on.sug::after{background:#141821}
+.b.sk{height:40px;font-size:12.5px;flex:1;min-width:0;flex-direction:column;gap:1px}
+.b.sk .m{font-size:12.5px;line-height:1.05}
+.b.sk .s{font-size:8.5px;line-height:1.05;color:var(--dim);font-weight:600}
+.b.sk.on .s{color:rgba(20,24,33,.68)}
+.b.sk.sug{border-color:var(--mark);box-shadow:inset 0 0 0 1px var(--mark)}
 .b.op{height:32px;font-size:12px;flex:1;min-width:0;padding:0 4px}
 .b.op.hard.on{background:var(--sp-hard);border-color:var(--sp-hard);color:#fff}
 .b.op.soft.on{background:var(--sp-soft);border-color:var(--sp-soft);color:#fff}
@@ -128,7 +130,9 @@ svg.court{display:block;width:100%;height:100%;touch-action:none}
   .console{flex:1;min-width:0;overflow-y:auto;border-top:0;border-left:1px solid var(--line);
     padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
   .b.pl{height:44px;font-size:15px}
-  .b.sk{height:42px;font-size:13.5px}
+  .b.sk{height:48px}
+  .b.sk .m{font-size:13.5px}
+  .b.sk .s{font-size:9.5px}
   .b.op{height:38px}
   .ev{height:62px}
 }
@@ -342,6 +346,8 @@ tr.total td:first-child{background:#2A2418}
   <div class="sep"></div>
   <div class="hd">アプリ</div>
   <button class="big" id="btnUpdate">最新版に更新する</button>
+  <div class="hd">用語</div>
+  <div class="note" id="glossBody"></div>
   <div class="hd">評価基準</div>
   <div id="critBody" class="note"></div>
   <div class="note" style="margin-top:14px;color:var(--dim2)">
@@ -370,15 +376,18 @@ const C0=2,C1=52,R0=6,R1=83, IN_C0=14,IN_C1=40,IN_R0=18,IN_R1=71;
 const NET=45, ATK_F=36, ATK_N=54, NC=C1-C0+1, NR=R1-R0+1;
 
 const SKILLS=[
-  {k:'サーブ',l:'サーブ'},{k:'レセプション',l:'レセプ'},
-  {k:'レセプションアタック',l:'REアタック'},{k:'トランジションアタック',l:'TRアタック'},
-  {k:'ブロック',l:'ブロック'},{k:'ディグ',l:'ディグ'},
+  {k:'サーブ',l:'サーブ'},
+  {k:'レセプション',l:'レセプション',sub:'サーブを受ける'},
+  {k:'レセプションアタック',l:'レセプ攻撃',sub:'サーブ返球から'},
+  {k:'トランジションアタック',l:'切返し攻撃',sub:'ラリー中'},
+  {k:'ブロック',l:'ブロック'},
+  {k:'ディグ',l:'ディグ',sub:'スパイクを拾う'},
   {k:'反則',l:'反則'},{k:'その他',l:'その他'}
 ];
 const SKILL_L={};SKILLS.forEach(s=>SKILL_L[s.k]=s.l);
 const SERVES=['ジャンプ','ジャンプフローター','フローター'];
 const SERVE_L={'ジャンプ':'ジャンプ','ジャンプフローター':'Jフロ','フローター':'フロータ'};
-const TOSSES=['平行','Aクイック','B','C','D','Bick','二段','アンダー'];
+const TOSSES=['平行','Aクイック','B','C','D','バック','二段','アンダー'];
 const TOSS_L={'Aクイック':'A'};
 const SPIKES=[{k:'強打',c:'hard'},{k:'軟打',c:'soft'},{k:'プッシュ',c:'push'},{k:'フェイント',c:'feint'},{k:'チャンス',c:'chance'}];
 const EVALS=['#','+','!','/','-','='];
@@ -597,12 +606,13 @@ function mk(cls,label,on){const b=document.createElement('button');b.className=c
 function fill(el,items,getv,setv,cls){
   el.innerHTML='';
   items.forEach(it=>{const b=mk('b '+(cls||'op')+(it.cls?' '+it.cls:''),it.label,()=>setv(getv()===it.value?'':it.value));
+    if(it.sub)b.innerHTML='<span class="m">'+esc(it.label)+'</span><span class="s">'+esc(it.sub)+'</span>';
     b.dataset.v=it.value;el.appendChild(b);});
 }
 const mark=(el,v)=>Array.from(el.children).forEach(b=>b.classList.toggle('on',v!==''&&b.dataset.v===v));
 
-fill($('#skillA'),SKILLS.slice(0,4).map(s=>({value:s.k,label:s.l})),()=>S.cur.skill,setSkill,'sk');
-fill($('#skillB'),SKILLS.slice(4).map(s=>({value:s.k,label:s.l})),()=>S.cur.skill,setSkill,'sk');
+fill($('#skillA'),SKILLS.slice(0,4).map(s=>({value:s.k,label:s.l,sub:s.sub})),()=>S.cur.skill,setSkill,'sk');
+fill($('#skillB'),SKILLS.slice(4).map(s=>({value:s.k,label:s.l,sub:s.sub})),()=>S.cur.skill,setSkill,'sk');
 fill($('#serveRow'),SERVES.map(s=>({value:s,label:SERVE_L[s]})),()=>S.cur.serve,v=>{S.cur.serve=v;render();});
 fill($('#tossRow'),TOSSES.map(s=>({value:s,label:TOSS_L[s]||s})),()=>S.cur.toss,v=>{S.cur.toss=v;render();});
 fill($('#spikeRow'),SPIKES.map(s=>({value:s.k,label:s.k,cls:s.c})),()=>S.cur.spike,v=>{S.cur.spike=v;render();});
@@ -958,6 +968,7 @@ $('#fileIn').onchange=ev=>{
         if(confirm(add.length+'件を今の記録に追加します。よろしいですか？')){
           S.events=S.events.concat(add);
           S.events.sort((a,b)=>(Number(a.set)-Number(b.set))||(a.ts-b.ts));
+          migrate();
           recalc();render();save();toast(add.length+'件を追加しました');}
       }
     }catch(e){toast('ファイルを読み取れませんでした');}
@@ -1017,6 +1028,19 @@ OPTS.forEach(([id,k])=>{$('#'+id).onclick=()=>{S.opt[k]=!S.opt[k];syncOpts();
 function syncOpts(){OPTS.forEach(([id,k])=>$('#'+id).classList.toggle('on',!!S.opt[k]));}
 function syncForm(){$('#inOwn').value=S.own;$('#inOpp').value=S.opp;$('#inMatch').value=S.match||'';regs();syncOpts();}
 
+/* 用語のかんたん説明 */
+(function(){
+  const G=[['レセプ攻撃','レセプションアタック。サーブを受けて（レセプションして）組み立てた攻撃。元ブックの「REアタック」'],
+    ['切返し攻撃','トランジションアタック。ラリー中に相手の攻撃を拾ってから返す攻撃。元ブックの「TRアタック」'],
+    ['レセプション','サーブを受けること。サーブレシーブ'],
+    ['ディグ','スパイクやフェイントを拾うこと'],
+    ['バック','バックアタック。後衛からアタックラインの後ろで打つ攻撃'],
+    ['ワンタッチ','3点入力のこと。始点→タッチ点→終点の順にコートを押します（ブロックは自動でこれになります）'],
+    ['ローテ','S1〜S6。セッターの位置で表すローテーション'],
+    ['チャンス','攻撃としてカウントしない返球。成績表の本数から外れます']];
+  $('#glossBody').innerHTML=G.map(([a,b])=>'<div style="margin-bottom:7px"><b style="color:var(--text)">'+esc(a)+'</b>　'+esc(b)+'</div>').join('');
+})();
+
 /* 評価基準の一覧 */
 (function(){let h='';
   [['サーブ','サーブ'],['レセプション','レセプション・ディグ'],['attack','アタック'],['ブロック','ブロック']].forEach(([k,l])=>{
@@ -1038,7 +1062,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 document.addEventListener('pointerdown',function once(){document.removeEventListener('pointerdown',once);if(S.opt.wake)wake(true);},{once:true});
 
 /* ---------------- Service Worker ---------------- */
-const APP_VER='ver.6.0';
+const APP_VER='ver.6.1';
 $('#verLine').textContent='バレー記録 '+APP_VER;
 $('#btnUpdate').onclick=async()=>{toast('最新版を確認しています…');
   try{if('serviceWorker'in navigator){const r=await navigator.serviceWorker.getRegistration();if(r)await r.update();}}catch(e){}
@@ -1049,12 +1073,18 @@ if('serviceWorker'in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{}));
 }
 
+/* 古い表記の読み替え */
+function migrate(){
+  S.events.forEach(e=>{ if(e.toss==='Bick')e.toss='バック'; });
+  if(S.cur&&S.cur.toss==='Bick')S.cur.toss='バック';
+}
+
 /* ---------------- 起動 ---------------- */
 (async function(){
   const raw=await store.get(KEY);
   if(raw){try{const o=JSON.parse(raw);if(o&&o.events){S=Object.assign(blank(),o);S.opt=Object.assign(blank().opt,o.opt||{});}}catch(e){}}
   if(!S.cur)S.cur=blank().cur;
-  recalc();syncForm();render();
+  migrate();recalc();syncForm();render();
   if(S.opt.wake)wake(true);
 })();
 </script>
