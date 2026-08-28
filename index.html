@@ -77,6 +77,10 @@ input,select,textarea{font-family:inherit;-webkit-user-select:text;user-select:t
 /* ---- court pane ---- */
 .courtpane{flex:1;min-height:110px;position:relative;padding:5px 6px 0;display:flex}
 svg.court{display:block;width:100%;height:100%;touch-action:none}
+.otbtn{position:absolute;left:11px;top:10px;z-index:5;font-size:9.5px;font-weight:800;line-height:1.25;
+  padding:5px 7px;border-radius:8px;background:rgba(14,17,22,.5);color:#E7EDF5;text-align:center;
+  border:1px solid rgba(255,255,255,.4)}
+.otbtn.on{background:var(--mark);color:#141821;border-color:var(--mark)}
 .loupe{position:fixed;width:132px;height:132px;border-radius:50%;overflow:hidden;pointer-events:none;
   border:2px solid rgba(255,255,255,.85);box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:60;display:none;background:var(--free)}
 .loupe.on{display:block}
@@ -265,6 +269,7 @@ tr.total td:first-child{background:#2A2418}
 <div class="page on" id="page-rec">
   <div class="courtpane">
     <svg class="court" id="court" viewBox="0 0 51 78" preserveAspectRatio="xMidYMid meet"></svg>
+    <button class="otbtn" id="otBtn">ワンタッチ<br>3点入力</button>
   </div>
 
   <div class="console">
@@ -539,7 +544,7 @@ const store={
 function blank(){return{
   v:6,match:'',own:'名工大',opp:'相手校',
   rostOwn:new Array(14).fill(''),rostOpp:new Array(14).fill(''),
-  set:1,rot:'S1',events:[],serveFirst:{},rot0:{},
+  set:1,rot:'S1',events:[],serveFirst:{},rot0:{},otPref:false,
   cur:{taps:[],ot:false,side:'own',skill:'',serve:'',toss:'',spike:'',pOwn:'',pOpp:''},
   opt:{simpleEval:false,coord:false,suggest:true,zone:true,wake:true,vib:true,oppRoster:false,autoRot:true,rotDir:'down'}
 };}
@@ -798,10 +803,12 @@ fill($('#serveRow'),SERVES.map(s=>({value:s,label:SERVE_L[s]})),()=>S.cur.serve,
 fill($('#tossRow'),TOSSES.map(s=>({value:s,label:TOSS_L[s]||s})),()=>S.cur.toss,v=>{S.cur.toss=v;render();});
 fill($('#spikeRow'),SPIKES.map(s=>({value:s.k,label:s.k,cls:s.c})),()=>S.cur.spike,v=>{S.cur.spike=v;render();});
 function setSkill(v){
+  const wasBlock=baseSkill(S.cur.skill)==='ブロック';
   S.cur.skill=v;
   if(v)S.cur.side=isOpp(v)?'opp':'own';
-  if(v==='ブロック'||v==='相手ブロック')S.cur.ot=true;
-  if(v&&v.indexOf('ブロック')<0&&S.cur.ot&&S.cur.taps.length<3)S.cur.ot=false;
+  if(baseSkill(v)==='ブロック')S.cur.ot=true;
+  else if(wasBlock)S.cur.ot=!!S.otPref;
+  if(!S.cur.ot&&S.cur.taps.length>2)S.cur.taps=S.cur.taps.slice(0,2);
   if(!S.cur.ot&&S.cur.taps.length>2)S.cur.taps=S.cur.taps.slice(0,2);
   render();
 }
@@ -859,7 +866,8 @@ function record(sym){
   if(j.h)flash('pt'); else if(j.a)flash('ls');
   buzz(j);
   const nx=S.opt.suggest?nextOf(c.skill):'';
-  S.cur={taps:[],ot:nx==='ブロック',side:nx?(isOpp(nx)?'opp':'own'):c.side,
+  S.cur={taps:[],ot:baseSkill(nx)==='ブロック'?true:!!S.otPref,
+    side:nx?(isOpp(nx)?'opp':'own'):c.side,
     skill:nx,serve:'',toss:'',spike:'',pOwn:'',pOpp:''};
   toast(j.reason?(j.h?'得点 ':'失点 ')+e.sh+' - '+e.sa:'記録（'+(hasC?'コースあり':'コースなし')+'）');
   render();save();
@@ -885,7 +893,7 @@ function updateLast(){
   if(c.toss)parts.push(esc(c.toss));
   if(c.spike)parts.push(esc(c.spike));
   const done=c.taps.length>=need;
-  const coord='<button class="tiny'+(done?' pt':'')+'" id="qCoord">コース '+c.taps.length+'/'+need+(c.ot?' 3点':'')+'</button>';
+  const coord='<span class="tiny'+(done?' pt':'')+'">コース '+c.taps.length+'/'+need+'</span>';
   let left;
   if(parts.length)left=parts.join(' ／ ');
   else{
@@ -898,8 +906,7 @@ function updateLast(){
     '<button class="tiny pt" id="qP">+1</button>'+
     '<button class="tiny ls" id="qL">−1</button>'+
     '<button class="tiny" id="qU">取消</button></span>';
-  $('#qCoord').onclick=()=>{S.cur.ot=!S.cur.ot;if(!S.cur.ot&&S.cur.taps.length>2)S.cur.taps=S.cur.taps.slice(0,2);render();save();
-    toast(S.cur.ot?'3点入力（ワンタッチ・ブロック）':'2点入力');};
+
   $('#qHelp').onclick=critSheet;
   $('#qP').onclick=()=>direct(true);
   $('#qL').onclick=()=>direct(false);
@@ -963,6 +970,9 @@ function render(){
   $('#rowSpike').style.display=isAtk?'':'none';
 
   renderEval();
+  const ob=$('#otBtn');
+  ob.classList.toggle('on',c.ot);
+  ob.innerHTML=c.ot?'ワンタッチ<br>3点入力':'2点入力<br>始点→終点';
   updateLast();drawCourt();
   if($('#page-list').classList.contains('on'))renderList();
   if($('#page-stat').classList.contains('on'))renderStat();
@@ -1112,6 +1122,15 @@ function drawScatter(list,names,setNo){
   $('#scatBody').innerHTML=g+'</svg>';
 }
 $('#anaSet').onchange=renderAna; $('#scAction').onchange=renderAna;
+
+$('#otBtn').onclick=()=>{
+  const on=!S.cur.ot;
+  S.cur.ot=on;
+  if(baseSkill(S.cur.skill)!=='ブロック')S.otPref=on;
+  if(!on&&S.cur.taps.length>2)S.cur.taps=S.cur.taps.slice(0,2);
+  render();save();
+  toast(on?'3点入力：始点 → 当たった点 → 終点':'2点入力：始点 → 終点');
+};
 
 /* ---------------- 一覧・編集 ---------------- */
 let listPtOnly=false;
@@ -1450,7 +1469,7 @@ function syncForm(){$('#inOwn').value=S.own;$('#inOpp').value=S.opp;$('#inMatch'
     ['レセプション','サーブを受けること。サーブレシーブ'],
     ['ディグ','スパイクやフェイントを拾うこと'],
     ['バック','バックアタック。後衛からアタックラインの後ろで打つ攻撃'],
-    ['ワンタッチ','3点入力のこと。始点→タッチ点→終点の順にコートを押します（ブロックは自動でこれになります）'],
+    ['ワンタッチ / 3点入力','コート左上のボタンで切り替えます。始点→当たった点→終点の順に押します。ブロックアウトで決めたとき（アタックの「決定」）や、ブロックのワンタッチに使ってください。ブロックを選ぶと自動でオンになります'],
     ['ローテ','S1〜S6。セッターの位置で表すローテーション'],
     ['チャンス','攻撃としてカウントしない返球。成績表の本数から外れます'],
     ['SO率','サイドアウト率。相手サーブを受けたラリーで得点できた割合'],
@@ -1483,7 +1502,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 document.addEventListener('pointerdown',function once(){document.removeEventListener('pointerdown',once);if(S.opt.wake)wake(true);},{once:true});
 
 /* ---------------- Service Worker ---------------- */
-const APP_VER='ver.9.0';
+const APP_VER='ver.10.0';
 $('#verLine').textContent='バレー記録 '+APP_VER;
 $('#btnUpdate').onclick=async()=>{toast('最新版を確認しています…');
   try{if('serviceWorker'in navigator){const r=await navigator.serviceWorker.getRegistration();if(r)await r.update();}}catch(e){}
