@@ -125,13 +125,21 @@ svg.court{display:block;width:100%;height:100%;touch-action:none}
 .b.op.feint.on{background:var(--sp-feint);border-color:var(--sp-feint);color:#fff}
 .b.op.push.on{background:var(--sp-push);border-color:var(--sp-push);color:#fff}
 .b.op.chance.on{background:var(--sp-none);border-color:var(--sp-none);color:#fff}
+.sideb{width:34px;flex:none;height:40px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
+  font-size:15px;font-weight:800;color:var(--dim2);display:flex;align-items:center;justify-content:center}
+.sideb.on{background:var(--mark);color:#141821;border-color:var(--mark)}
+.sideb.opp.on{background:var(--free);color:#0E1116;border-color:var(--free)}
 .glab{font-size:9px;letter-spacing:.14em;color:var(--dim2);font-weight:800;
   align-self:center;flex:none;width:34px;text-align:right}
 
 .ev{border-radius:10px;background:var(--panel2);border:1px solid var(--line);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:52px}
-.ev .sym{font-size:20px;font-weight:800;line-height:1}
-.ev .cap{font-size:8.5px;color:var(--dim);line-height:1.1;text-align:center;padding:0 2px}
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:54px}
+.ev .lab{font-size:11.5px;font-weight:800;line-height:1.15;text-align:center;padding:0 2px;letter-spacing:-.02em}
+.evhint{height:54px;display:flex;align-items:center;justify-content:center;border-radius:10px;
+  border:1px dashed var(--line);color:var(--dim2);font-size:11.5px;font-weight:600}
+.ev .sym{font-size:10px;font-weight:700;color:var(--dim);line-height:1;
+  border:1px solid var(--line);border-radius:4px;padding:1px 4px;min-width:16px;text-align:center}
+.ev.pt .lab{color:var(--pt)} .ev.ls .lab{color:var(--ls)}
 .ev.pt{border-color:rgba(46,204,113,.6);background:rgba(46,204,113,.09)} .ev.pt .sym{color:var(--pt)}
 .ev.ls{border-color:rgba(255,93,93,.55);background:rgba(255,93,93,.09)} .ev.ls .sym{color:var(--ls)}
 .ev.off{opacity:.3}
@@ -145,10 +153,12 @@ svg.court{display:block;width:100%;height:100%;touch-action:none}
     padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
   .b.pl{height:44px;font-size:15px}
   .b.sk{height:48px}
+  .sideb{height:48px;width:40px;font-size:17px}
   .b.sk .m{font-size:13.5px}
   .b.sk .s{font-size:9.5px}
   .b.op{height:38px}
-  .ev{height:62px}
+  .ev{height:64px}
+  .ev .lab{font-size:13px}
 }
 
 /* ================= flash ================= */
@@ -173,7 +183,8 @@ tr.total td:first-child{background:#2A2418}
 .rec .sc{font-weight:800;font-variant-numeric:tabular-nums;min-width:48px;font-size:12px}
 .rec.pt .sc{color:var(--pt)} .rec.ls .sc{color:var(--ls)} .rec .sc{color:var(--dim2)}
 .rec .pn{font-weight:700;min-width:26px}
-.rec .sy{font-weight:800;font-size:15px;min-width:16px;text-align:center}
+.rec.opp .pn{color:var(--free)}
+.rec .sy{font-weight:800;font-size:11.5px;min-width:44px;text-align:center}
 .rec .de{color:var(--dim);font-size:10.5px;margin-left:auto;text-align:right;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap;max-width:46%}
 .rec .st{font-size:9px;color:var(--dim2);flex:none}
@@ -263,8 +274,8 @@ tr.total td:first-child{background:#2A2418}
     <div class="grid7" id="rostOwn"></div>
     <div class="grid7" id="rostOpp" style="margin-top:var(--gap);display:none"></div>
 
-    <div class="rowline"><span class="glab">スキル</span><div class="grid4" id="skillA" style="flex:1"></div></div>
-    <div class="rowline"><span class="glab"></span><div class="grid4" id="skillB" style="flex:1"></div></div>
+    <div class="rowline"><button class="sideb" id="sideOwn">自</button><div class="grid4" id="skillA" style="flex:1"></div></div>
+    <div class="rowline"><button class="sideb opp" id="sideOpp">相</button><div class="grid4" id="skillB" style="flex:1"></div></div>
 
     <div class="rowline" id="rowServe"><span class="glab">サーブ</span><div class="rowline" id="serveRow" style="flex:1;margin:0"></div></div>
     <div class="rowline" id="rowToss"><span class="glab">トス</span><div class="rowline wrapy" id="tossRow" style="flex:1;margin:0"></div></div>
@@ -319,12 +330,17 @@ tr.total td:first-child{background:#2A2418}
   </div>
   <div id="scatBody"></div>
 
+  <div class="hd">相手チームの集計</div>
+  <div id="oppBody"></div>
+  <div class="note">「相」に切り替えて記録した相手のプレーだけを集計します。ブックの「総合(相手)」シートの穴埋めに使えます。</div>
+
   <div class="hd">得点・失点の内訳</div>
   <div id="breakBody"></div>
 </div>
 
 <!-- ============ コース図 ============ -->
 <div class="page" id="page-map">
+  <div class="field"><label>チーム</label><select id="fTeam"><option value="">すべて</option><option value="own">自チーム</option><option value="opp">相手チーム</option></select></div>
   <div class="field"><label>スキル</label><select id="fSkill"></select></div>
   <div class="field"><label>トス</label><select id="fToss"></select></div>
   <div class="field"><label>結果</label><select id="fEval"></select></div>
@@ -357,12 +373,13 @@ tr.total td:first-child{background:#2A2418}
   <div class="hd">動作</div>
   <button class="sw" id="optCoord"><span>コース入力を必須にする<span class="sub">オフなら、コートを押さなくても評価だけで記録できます</span></span><span class="kn"></span></button>
   <button class="sw" id="optSuggest"><span>次のスキルを先に選んでおく<span class="sub">レセプション→REアタックなど、流れから予測します</span></span><span class="kn"></span></button>
+  <button class="sw" id="optSimple"><span>評価をかんたん3〜4択にする<span class="sub">「決めた／続いた／ミス」だけにします。慣れてきたらオフに（保存される記号は同じ）</span></span><span class="kn"></span></button>
   <button class="sw" id="optAutoRot"><span>ローテとサーブ権を自動計算<span class="sub">サイドアウトのたびにローテを1つ進めます。ずれたらヘッダーで直せます</span></span><span class="kn"></span></button>
   <button class="sw" id="optRotDir"><span>ローテの向き S1→S2…<span class="sub">オフ（既定）は S1→S6→S5… の順。セッター位置で数えるならこちら</span></span><span class="kn"></span></button>
   <button class="sw" id="optZone"><span>ゾーン番号を表示<span class="sub">コートに 1〜6 の位置番号を薄く出します</span></span><span class="kn"></span></button>
   <button class="sw" id="optWake"><span>画面を消さない<span class="sub">試合中スリープしません（電池を使います）</span></span><span class="kn"></span></button>
   <button class="sw" id="optVib"><span>記録時に振動<span class="sub">得点・失点で長さが変わります</span></span><span class="kn"></span></button>
-  <button class="sw" id="optOppRoster"><span>相手選手も記録する<span class="sub">相手の名簿ボタンを記録画面に出します</span></span><span class="kn"></span></button>
+  <button class="sw" id="optOppRoster"><span>両チームの名簿を出す<span class="sub">切り替えていない側の名簿も記録画面に表示します</span></span><span class="kn"></span></button>
 
   <div class="hd">書き出し</div>
   <button class="big go" id="btnCopy2">Excelへコピー（そのまま貼り付け）</button>
@@ -436,6 +453,20 @@ const SKILLS=[
   {k:'反則',l:'反則'},{k:'その他',l:'その他'}
 ];
 const SKILL_L={};SKILLS.forEach(s=>SKILL_L[s.k]=s.l);
+/* 相手チームのプレー。スキル名に「相手」を付けて保存するので、
+   ブックの成績マクロ（自チーム列で絞る）には一切混ざらない */
+const OPP_SKILLS=[
+  {k:'相手アタック',l:'アタック',sub:'スパイク'},
+  {k:'相手サーブ',l:'サーブ'},
+  {k:'相手ブロック',l:'ブロック'},
+  {k:'相手レセプション',l:'レセプ',sub:'サーブを受ける'},
+  {k:'相手ディグ',l:'ディグ',sub:'スパイクを拾う'},
+  {k:'相手反則',l:'反則'},
+  {k:'相手その他',l:'その他'}
+];
+OPP_SKILLS.forEach(s=>SKILL_L[s.k]='相'+s.l);
+const isOpp=k=>typeof k==='string'&&k.indexOf('相手')===0;
+const baseSkill=k=>isOpp(k)?k.slice(2):k;
 const SERVES=['ジャンプ','ジャンプフローター','フローター'];
 const SERVE_L={'ジャンプ':'ジャンプ','ジャンプフローター':'Jフロ','フローター':'フロータ'};
 const TOSSES=['平行','Aクイック','B','C','D','バック','二段','アンダー'];
@@ -446,25 +477,56 @@ const ATTACKS=['アタック','レセプションアタック','トランジシ�
 const ROTS=['S1','S2','S3','S4','S5','S6'];
 const SLOTS=['1','2','3','4','5','6','Li'];
 /* ラリーの流れ（次に来やすいスキル） */
-const NEXT={'サーブ':'ディグ','レセプション':'レセプションアタック','レセプションアタック':'ディグ',
+const NEXT_OWN={'サーブ':'ディグ','レセプション':'レセプションアタック','レセプションアタック':'ディグ',
   'トランジションアタック':'ディグ','ディグ':'トランジションアタック','ブロック':'トランジションアタック'};
+const NEXT_BOTH={'サーブ':'相手アタック','レセプション':'レセプションアタック',
+  'レセプションアタック':'相手アタック','トランジションアタック':'相手アタック',
+  'ディグ':'トランジションアタック','ブロック':'トランジションアタック',
+  '相手サーブ':'レセプション','相手アタック':'ディグ','相手ブロック':'トランジションアタック',
+  '相手ディグ':'相手アタック','相手レセプション':'相手アタック'};
+const nextOf=k=>(S.events.some(e=>isOpp(e.skill))?NEXT_BOTH:NEXT_OWN)[k]||'';
 
 const CAP={
-  attack:{'#':'得点','+':'良','!':'リバウンド','-':'可','/':'被ブロック','=':'ミス'},
-  'サーブ':{'#':'得点','+':'優','!':'良','-':'不良','/':'半得点','=':'ミス'},
-  'レセプション':{'#':'A 完璧','+':'B 良','!':'得点','-':'D 不良','/':'C 半失点','=':'ミス'},
+  attack:{'#':'決定','+':'良','!':'リバウンド','-':'可','/':'被ブロック','=':'ミス'},
+  'サーブ':{'#':'エース','+':'優','!':'良','-':'不良','/':'半得点','=':'ミス'},
+  'レセプション':{'#':'完璧A','+':'良B','!':'得点','-':'不良D','/':'半失点C','=':'ミス'},
   'ブロック':{'#':'決定','+':'良','!':'','-':'可','/':'失点','=':'ミス'},
   'その他':{'#':'得点','+':'','!':'','-':'','/':'','=':'失点'},
   '反則':{'#':'得点','+':'','!':'','-':'','/':'','=':'失点'}
 };
 CAP['ディグ']=CAP['レセプション'];
+/* かんたん表示：迷ったときの3〜4択。押すと同じ記号で保存されます */
+const SIMPLE={
+  attack:[{s:'#',l:'決めた'},{s:'-',l:'続いた'},{s:'/',l:'ブロック'},{s:'=',l:'ミス'}],
+  'サーブ':[{s:'#',l:'エース'},{s:'!',l:'続いた'},{s:'=',l:'ミス'}],
+  'レセプション':[{s:'#',l:'完璧A'},{s:'+',l:'ふつうB'},{s:'/',l:'乱れたC'},{s:'=',l:'ミス'}],
+  'ブロック':[{s:'#',l:'決めた'},{s:'+',l:'続いた'},{s:'=',l:'ミス'}],
+  'その他':[{s:'#',l:'得点'},{s:'=',l:'失点'}],
+  '反則':[{s:'#',l:'得点'},{s:'=',l:'失点'}]
+};
+SIMPLE['ディグ']=SIMPLE['レセプション'];
+/* 相手のプレーは「こちらから見た言葉」に置き換える */
+const CAP_OPP={attack:{'/':'ブロック'},'サーブ':{'#':'被エース','/':'半失点'},'ブロック':{'/':'ネットタッチ'}};
+const SIMPLE_OPP={
+  attack:[{s:'#',l:'決められた'},{s:'-',l:'拾った'},{s:'/',l:'ブロック'},{s:'=',l:'相手ミス'}],
+  'サーブ':[{s:'#',l:'被エース'},{s:'!',l:'続いた'},{s:'=',l:'相手ミス'}],
+  'レセプション':[{s:'#',l:'完璧A'},{s:'+',l:'ふつうB'},{s:'/',l:'乱れたC'},{s:'=',l:'相手ミス'}],
+  'ブロック':[{s:'#',l:'シャット'},{s:'+',l:'続いた'},{s:'=',l:'相手ミス'}],
+  'その他':[{s:'#',l:'失点'},{s:'=',l:'得点'}],
+  '反則':[{s:'#',l:'失点'},{s:'=',l:'得点'}]
+};
+SIMPLE_OPP['ディグ']=SIMPLE_OPP['レセプション'];
+const keyOf=k=>{const b=baseSkill(k);return (ATTACKS.indexOf(b)>=0||b==='アタック')?'attack':b;};
+const simpleFor=k=>{if(!k)return null;const t=(isOpp(k)?SIMPLE_OPP:SIMPLE)[keyOf(k)];return t||null;};
+const critFor=k=>k?(CRIT[keyOf(k)]||null):null;
 const CRIT={
   attack:{'#':'決定(得点)','+':'良：敵が辛うじてディフェンスする','!':'ブロックされるが、味方によってつなげられる','-':'可：敵が簡単にディフェンスする','/':'ブロックされる(失点)','=':'ミス(ネット、アウトなど)'},
   'サーブ':{'#':'得点：サービスエース、又はサーブレシーブがミス','+':'優：相手レシーブが悪く1カ所からしか攻撃を使えない','!':'良：相手レシーブが1〜2mネットから離れ、いずれかのコンビ攻撃が使えない','-':'不良：相手が完璧にレシーブ','/':'半得点：相手サーブレシーブがネットを越えるなど、攻撃ができない','=':'ミス(アウト、ネット、フットフォルト)'},
   'レセプション':{'#':'完璧(最高の位置とボールの軌跡)','+':'良：ネットから1〜2m離れ、いずれかのコンビ攻撃が使えない','!':'得点：相手のミス等','-':'不良：ネットから3m以上離れ、1カ所しか攻撃を使えない','/':'半失点(パスがネットを越えたり、攻撃ができない)','=':'ミス(失点)'},
   'ブロック':{'#':'決定(得点)','+':'良：ワンタッチのあと味方が簡単につなげられる','!':'','-':'可：ワンタッチするが味方は簡単につなげられなかった','/':'失点(ネットタッチ)','=':'ミス(ブロックアウト、吸いこみなど)'}
 };
-const capFor=s=>!s?null:(ATTACKS.indexOf(s)>=0?CAP.attack:(CAP[s]||null));
+const capFor=k=>{if(!k)return null;const t=CAP[keyOf(k)];if(!t)return null;
+  return isOpp(k)?Object.assign({},t,CAP_OPP[keyOf(k)]||{}):t;};
 
 /* ---------------- 保存 ---------------- */
 const KEY='volley_data_ver5';
@@ -478,8 +540,8 @@ function blank(){return{
   v:6,match:'',own:'名工大',opp:'相手校',
   rostOwn:new Array(14).fill(''),rostOpp:new Array(14).fill(''),
   set:1,rot:'S1',events:[],serveFirst:{},rot0:{},
-  cur:{taps:[],ot:false,skill:'',serve:'',toss:'',spike:'',pOwn:'',pOpp:''},
-  opt:{coord:false,suggest:true,zone:true,wake:true,vib:true,oppRoster:false,autoRot:true,rotDir:'down'}
+  cur:{taps:[],ot:false,side:'own',skill:'',serve:'',toss:'',spike:'',pOwn:'',pOpp:''},
+  opt:{simpleEval:false,coord:false,suggest:true,zone:true,wake:true,vib:true,oppRoster:false,autoRot:true,rotDir:'down'}
 };}
 let DER={},RALLY=[],setEndSeen={};
 let S=blank(), saveT=null;
@@ -491,7 +553,24 @@ function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clea
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------------- 判定（元マクロ RecordData と同一） ---------------- */
-function judge(skill,sym,pOwn){
+function judge(skill,sym,pOwn,pOpp){
+  if(isOpp(skill)){
+    const b=baseSkill(skill), who='相手'+(pOpp?pOpp:'');
+    if(b==='アタック'){
+      if(sym==='#')return{h:0,a:1,reason:who+'決定'};
+      if(sym==='/'||sym==='=')return{h:1,a:0,reason:'相手アタックミス/被ブロック'};
+    }else if(b==='サーブ'||b==='ブロック'||b==='反則'){
+      if(sym==='#')return{h:0,a:1,reason:'相手'+b+'得点'};
+      if(sym==='=')return{h:1,a:0,reason:'相手の'+b+'ミス'};
+    }else if(b==='レセプション'||b==='ディグ'){
+      if(sym==='!')return{h:0,a:1,reason:'相手'+b+'中得点'};
+      if(sym==='=')return{h:1,a:0,reason:'相手'+b+'ミス'};
+    }else if(b==='その他'){
+      if(sym==='#')return{h:0,a:1,reason:'相手その他(得点)'};
+      if(sym==='=')return{h:1,a:0,reason:'相手その他(失点)'};
+    }
+    return{h:0,a:0,reason:null};
+  }
   if(skill==='直接入力'){ return sym==='#'?{h:1,a:0,reason:'ダイレクト得点'}:{h:0,a:1,reason:'ダイレクト失点'}; }
   if(ATTACKS.indexOf(skill)>=0){
     if(sym==='#')return{h:1,a:0,reason:(pOwn||'')+'決定'};
@@ -526,7 +605,7 @@ function recalc(){
     list.forEach(e=>{
       e._sv=serving;
       if(S.opt.autoRot)e.rot=rot;
-      const j=judge(e.skill,e.ev,e.pOwn);
+      const j=judge(e.skill,e.ev,e.pOwn,e.pOpp);
       h+=j.h;a+=j.a;e.sh=h;e.sa=a;e.reason=j.reason;
       if(j.h||j.a){
         const won=j.h===1;
@@ -553,7 +632,7 @@ const WEIGHT={'サーブ':{'+':0.4,'!':0.2,'/':0.4,'-':-0.2},
   attack:{'+':0.3,'!':0,'-':-0.15},'ブロック':{'+':0.3,'-':0}};
 WEIGHT['ディグ']=WEIGHT['レセプション'];
 function contrib(e){
-  const j=judge(e.skill,e.ev,e.pOwn);
+  const j=judge(e.skill,e.ev,e.pOwn,e.pOpp);
   if(j.h)return 1; if(j.a)return -1;
   const t=ATTACKS.indexOf(e.skill)>=0?WEIGHT.attack:WEIGHT[e.skill];
   return (t&&t[e.ev]!=null)?t[e.ev]:0;
@@ -624,6 +703,7 @@ function courtBase(arrows,o){
   return s;
 }
 function spikeColor(sp,sk,ev){
+  if(isOpp(sk)&&!sp)return ev==='#'?'#FF2D2D':(ev==='/'||ev==='='?'#3355FF':'#98A2AF');
   if(sk&&sk.indexOf('アタック')>=0&&sp){
     if(sp==='強打')return'#FF2D2D'; if(sp==='軟打')return'#2E86FF';
     if(sp==='フェイント')return'#00C264'; if(sp==='プッシュ')return'#A063C6'; return'#98A2AF';
@@ -700,22 +780,50 @@ function fill(el,items,getv,setv,cls,noToggle){
 }
 const mark=(el,v)=>Array.from(el.children).forEach(b=>b.classList.toggle('on',v!==''&&b.dataset.v===v));
 
-fill($('#skillA'),SKILLS.slice(0,4).map(s=>({value:s.k,label:s.l,sub:s.sub})),()=>S.cur.skill,setSkill,'sk',true);
-fill($('#skillB'),SKILLS.slice(4).map(s=>({value:s.k,label:s.l,sub:s.sub})),()=>S.cur.skill,setSkill,'sk',true);
+function renderSkills(){
+  const L=S.cur.side==='opp'?OPP_SKILLS:SKILLS;
+  const map=x=>({value:x.k,label:x.l,sub:x.sub});
+  fill($('#skillA'),L.slice(0,4).map(map),()=>S.cur.skill,setSkill,'sk',true);
+  fill($('#skillB'),L.slice(4).map(map),()=>S.cur.skill,setSkill,'sk',true);
+}
+function setSide(v){
+  if(S.cur.side===v)return;
+  S.cur.side=v; S.cur.skill=''; S.cur.serve='';S.cur.toss='';S.cur.spike='';
+  renderSkills(); render(); save();
+}
+$('#sideOwn').onclick=()=>setSide('own');
+$('#sideOpp').onclick=()=>setSide('opp');
+renderSkills();
 fill($('#serveRow'),SERVES.map(s=>({value:s,label:SERVE_L[s]})),()=>S.cur.serve,v=>{S.cur.serve=v;render();});
 fill($('#tossRow'),TOSSES.map(s=>({value:s,label:TOSS_L[s]||s})),()=>S.cur.toss,v=>{S.cur.toss=v;render();});
 fill($('#spikeRow'),SPIKES.map(s=>({value:s.k,label:s.k,cls:s.c})),()=>S.cur.spike,v=>{S.cur.spike=v;render();});
 function setSkill(v){
   S.cur.skill=v;
-  if(v==='ブロック')S.cur.ot=true;
-  if(v&&v!=='ブロック'&&S.cur.ot&&S.cur.taps.length<3)S.cur.ot=false;
+  if(v)S.cur.side=isOpp(v)?'opp':'own';
+  if(v==='ブロック'||v==='相手ブロック')S.cur.ot=true;
+  if(v&&v.indexOf('ブロック')<0&&S.cur.ot&&S.cur.taps.length<3)S.cur.ot=false;
   if(!S.cur.ot&&S.cur.taps.length>2)S.cur.taps=S.cur.taps.slice(0,2);
   render();
 }
-(function(){const g=$('#evalGrid');EVALS.forEach(sym=>{
-  const b=document.createElement('button');b.className='ev';b.dataset.sym=sym;
-  b.innerHTML='<span class="sym">'+esc(sym)+'</span><span class="cap"></span>';
-  b.onclick=()=>record(sym);g.appendChild(b);});})();
+function renderEval(){
+  const c=S.cur, cp=capFor(c.skill), g=$('#evalGrid');
+  if(!c.skill){
+    g.style.gridTemplateColumns='1fr';
+    g.innerHTML='<div class="evhint">スキルを選ぶと、評価ボタンが言葉で出ます</div>';
+    return;
+  }
+  const sm=S.opt.simpleEval?simpleFor(c.skill):null;
+  const items=sm?sm:EVALS.map(s=>({s,l:(cp&&cp[s])||''}));
+  g.style.gridTemplateColumns='repeat('+items.length+',1fr)';
+  g.innerHTML=items.map(it=>{
+    const j=judge(c.skill,it.s,c.pOwn,c.pOpp);
+    const off=!sm&&cp&&!cp[it.s];
+    return '<button class="ev'+(j.h?' pt':'')+(j.a?' ls':'')+(off?' off':'')+'" data-sym="'+esc(it.s)+'"'+(off?' disabled':'')+'>'+
+      (it.l?'<span class="lab">'+esc(it.l)+'</span><span class="sym">'+esc(it.s)+'</span>'
+           :'<span class="lab">—</span><span class="sym">'+esc(it.s)+'</span>')+'</button>';
+  }).join('');
+  Array.from(g.children).forEach(b=>b.onclick=()=>record(b.dataset.sym));
+}
 
 function roster(el,which){
   el.innerHTML='';
@@ -725,9 +833,11 @@ function roster(el,which){
       if(which==='own')S.cur.pOwn=S.cur.pOwn===nm?'':nm; else S.cur.pOpp=S.cur.pOpp===nm?'':nm;
       render();save();
     });
-    b.disabled=!nm;b.dataset.v=nm;el.appendChild(b);
+    b.disabled=!nm;b.dataset.v=nm;b.dataset.side=which;el.appendChild(b);
   });
 }
+
+const nameOf=e=>isOpp(e.skill)?('相手'+(e.pOpp||'')):(e.pOwn||'—');
 
 /* ---------------- 記録 ---------------- */
 function flash(kind){const f=$('#flash');f.className='';void f.offsetWidth;f.className=kind+' on';
@@ -745,11 +855,12 @@ function record(sym){
     skill:c.skill,pOwn:c.pOwn,pOpp:c.pOpp,serve:c.serve,toss:c.toss,spike:c.spike,ev:sym,
     sh:0,sa:0,set:S.set,rot:curRot(),reason:null,ts:Date.now()};
   S.events.push(e);recalc();
-  const j=judge(e.skill,sym,e.pOwn);
+  const j=judge(e.skill,sym,e.pOwn,e.pOpp);
   if(j.h)flash('pt'); else if(j.a)flash('ls');
   buzz(j);
-  const nx=S.opt.suggest?(NEXT[c.skill]||''):'';
-  S.cur={taps:[],ot:nx==='ブロック',skill:nx,serve:'',toss:'',spike:'',pOwn:'',pOpp:''};
+  const nx=S.opt.suggest?nextOf(c.skill):'';
+  S.cur={taps:[],ot:nx==='ブロック',side:nx?(isOpp(nx)?'opp':'own'):c.side,
+    skill:nx,serve:'',toss:'',spike:'',pOwn:'',pOpp:''};
   toast(j.reason?(j.h?'得点 ':'失点 ')+e.sh+' - '+e.sa:'記録（'+(hasC?'コースあり':'コースなし')+'）');
   render();save();
 }
@@ -758,7 +869,7 @@ function direct(isPt){
     serve:'',toss:'',spike:'',ev:isPt?'#':'=',sh:0,sa:0,set:S.set,rot:curRot(),reason:null,ts:Date.now()});
   recalc();flash(isPt?'pt':'ls');buzz({h:isPt?1:0,a:isPt?0:1});
   const l=S.events[S.events.length-1];
-  S.cur={taps:[],ot:false,skill:'',serve:'',toss:'',spike:'',pOwn:'',pOpp:''};
+  S.cur={taps:[],ot:false,side:'own',skill:'',serve:'',toss:'',spike:'',pOwn:'',pOpp:''};
   toast((isPt?'得点 ':'失点 ')+l.sh+' - '+l.sa);render();save();
 }
 
@@ -766,7 +877,9 @@ function direct(isPt){
 function updateLast(){
   const c=S.cur,need=c.ot?3:2,el=$('#lastLine');
   const parts=[];
-  if(c.pOwn)parts.push('<b>'+esc(c.pOwn)+'</b>');
+  if(c.side==='opp')parts.push('<b style="color:var(--free)">相手</b>');
+  const who=c.side==='opp'?c.pOpp:c.pOwn;
+  if(who)parts.push('<b>'+esc(who)+'</b>');
   if(c.skill)parts.push('<b>'+esc(SKILL_L[c.skill]||c.skill)+'</b>');
   if(c.serve)parts.push(esc(SERVE_L[c.serve]||c.serve));
   if(c.toss)parts.push(esc(c.toss));
@@ -777,21 +890,48 @@ function updateLast(){
   if(parts.length)left=parts.join(' ／ ');
   else{
     const p=S.events[S.events.length-1];
-    left=p?'<span style="color:var(--dim2)">直前</span> '+esc(p.pOwn||'—')+' '+esc(SKILL_L[p.skill]||p.skill)+' '+esc(p.ev)+' → '+p.sh+'-'+p.sa
+    left=p?'<span style="color:var(--dim2)">直前</span> '+esc(nameOf(p))+' '+esc(SKILL_L[p.skill]||p.skill)+' '+esc(p.ev)+' → '+p.sh+'-'+p.sa
         :'<span style="color:var(--dim2)">選手とスキルを選んでください</span>';
   }
   el.innerHTML='<span class="lt">'+left+'</span><span class="sp">'+coord+
+    '<button class="tiny" id="qHelp">?</button>'+
     '<button class="tiny pt" id="qP">+1</button>'+
     '<button class="tiny ls" id="qL">−1</button>'+
     '<button class="tiny" id="qU">取消</button></span>';
   $('#qCoord').onclick=()=>{S.cur.ot=!S.cur.ot;if(!S.cur.ot&&S.cur.taps.length>2)S.cur.taps=S.cur.taps.slice(0,2);render();save();
     toast(S.cur.ot?'3点入力（ワンタッチ・ブロック）':'2点入力');};
+  $('#qHelp').onclick=critSheet;
   $('#qP').onclick=()=>direct(true);
   $('#qL').onclick=()=>direct(false);
   $('#qU').onclick=()=>{
     if(!S.events.length)return toast('取り消す記録がありません');
     const e=S.events.pop();recalc();render();save();toast('取り消し：'+(SKILL_L[e.skill]||e.skill)+' '+e.ev);
   };
+}
+
+/* いまのスキルの評価基準を出すシート */
+function critSheet(){
+  const k=S.cur.skill;
+  if(!k){toast('先にスキルを選んでください');return;}
+  const cr=critFor(k), cp=capFor(k), name=SKILL_L[k]||k;
+  let h='<h3>'+esc(name)+' の評価</h3>';
+  if(isOpp(k))h+='<div class="note" style="margin:0 0 10px">相手のプレーなので、'+
+    '<b style="color:var(--pt)">緑＝こちらの得点</b>／<b style="color:var(--ls)">赤＝こちらの失点</b> です。'+
+    '<br>下の細かい説明文は「相手チームから見た書き方」のままなので、文中の「敵」はこちらのことです。</div>';
+  EVALS.forEach(sym=>{
+    const lab=cp&&cp[sym]; if(!lab)return;
+    const j=judge(k,sym,S.cur.pOwn,S.cur.pOpp);
+    const c=j.h?'var(--pt)':(j.a?'var(--ls)':'var(--dim)');
+    h+='<div style="display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--line)">'+
+      '<span style="flex:none;width:22px;height:22px;border-radius:6px;border:1px solid var(--line);'+
+      'display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:'+c+'">'+esc(sym)+'</span>'+
+      '<div style="min-width:0"><b style="font-size:13px;color:'+c+'">'+esc(lab)+
+      (j.h?'　得点':(j.a?'　失点':''))+'</b>'+
+      ((cr&&cr[sym])?'<div class="note" style="margin:2px 0 0">'+
+        esc(isOpp(k)?cr[sym].replace(/[（(](得点|失点)[）)]/g,'').trim():cr[sym])+'</div>':'')+'</div></div>';
+  });
+  h+='<button class="big go" style="margin-top:12px" id="okCrit">閉じる</button>';
+  $('#sheetBody').innerHTML=h;$('#okCrit').onclick=closeSheet;openSheet();
 }
 
 /* ---------------- 全体更新 ---------------- */
@@ -806,24 +946,23 @@ function render(){
   $('#scOwn').textContent=sc.h; $('#scOpp').textContent=sc.a;
   $('#scOwn').classList.toggle('win',sc.h>sc.a); $('#scOpp').classList.toggle('win',sc.a>sc.h);
 
-  roster($('#rostOwn'),'own'); roster($('#rostOpp'),'opp');
+  const pri=c.side==='opp'?'opp':'own', sec=c.side==='opp'?'own':'opp';
+  roster($('#rostOwn'),pri); roster($('#rostOpp'),sec);
   $('#rostOpp').style.display=S.opt.oppRoster?'':'none';
+  $('#sideOwn').classList.toggle('on',c.side==='own');
+  $('#sideOpp').classList.toggle('on',c.side==='opp');
+  if(($('#skillA').firstChild&&isOpp($('#skillA').firstChild.dataset.v))!==(c.side==='opp'))renderSkills();
   mark($('#skillA'),c.skill);mark($('#skillB'),c.skill);
   mark($('#serveRow'),c.serve);mark($('#tossRow'),c.toss);mark($('#spikeRow'),c.spike);
-  const sug=S.opt.suggest&&S.events.length?NEXT[S.events[S.events.length-1].skill]:'';
+  const sug=S.opt.suggest&&S.events.length?nextOf(S.events[S.events.length-1].skill):'';
   [$('#skillA'),$('#skillB')].forEach(g=>Array.from(g.children).forEach(b=>b.classList.toggle('sug',!!sug&&b.dataset.v===sug)));
 
-  $('#rowServe').style.display=(c.skill==='サーブ')?'':'none';
-  $('#rowToss').style.display =(ATTACKS.indexOf(c.skill)>=0)?'':'none';
-  $('#rowSpike').style.display=(ATTACKS.indexOf(c.skill)>=0)?'':'none';
+  const bs=baseSkill(c.skill), isAtk=(ATTACKS.indexOf(bs)>=0||bs==='アタック');
+  $('#rowServe').style.display=(bs==='サーブ')?'':'none';
+  $('#rowToss').style.display =isAtk?'':'none';
+  $('#rowSpike').style.display=isAtk?'':'none';
 
-  const cp=capFor(c.skill);
-  Array.from($('#evalGrid').children).forEach(b=>{
-    const sym=b.dataset.sym,j=judge(c.skill,sym,c.pOwn);
-    b.classList.toggle('pt',j.h===1);b.classList.toggle('ls',j.a===1);
-    b.classList.toggle('off',!c.skill||(cp&&!cp[sym]));
-    b.querySelector('.cap').textContent=cp?(cp[sym]||''):'';
-  });
+  renderEval();
   updateLast();drawCourt();
   if($('#page-list').classList.contains('on'))renderList();
   if($('#page-stat').classList.contains('on'))renderStat();
@@ -889,10 +1028,10 @@ function renderAna(){
   if(!names.length){$('#contBody').innerHTML='<div class="empty-note">まだ記録がありません。</div>';}
   else{
     const rows=names.map(p=>{
-      const my=list.filter(e=>e.pOwn===p);
-      const sN=new Set(S.events.filter(e=>e.pOwn===p&&(setNo==null||Number(e.set)===setNo)).map(e=>Number(e.set))).size||1;
+      const my=list.filter(e=>e.pOwn===p&&!isOpp(e.skill));
+      const sN=new Set(S.events.filter(e=>e.pOwn===p&&!isOpp(e.skill)&&(setNo==null||Number(e.set)===setNo)).map(e=>Number(e.set))).size||1;
       let pt=0,ls=0,c=0;
-      my.forEach(e=>{const j=judge(e.skill,e.ev,e.pOwn);pt+=j.h;ls+=j.a;c+=contrib(e);});
+      my.forEach(e=>{const j=judge(e.skill,e.ev,e.pOwn,e.pOpp);pt+=j.h;ls+=j.a;c+=contrib(e);});
       return{p,n:my.length,sets:sN,pt,ls,c,cs:c/sN,er:my.length?c/my.length:0};
     }).sort((a,b)=>b.cs-a.cs);
     const col=v=>v>0?'color:var(--pt)':(v<0?'color:var(--ls)':'color:var(--dim)');
@@ -905,9 +1044,35 @@ function renderAna(){
     drawScatter(list,names,setNo);
   }
 
+  /* --- 相手チームの集計 --- */
+  const oppEv=list.filter(e=>isOpp(e.skill));
+  if(!oppEv.length){
+    $('#oppBody').innerHTML='<div class="empty-note">相手のプレーはまだ記録がありません。<br>記録画面の左の「相」を押すと相手側に切り替わります。</div>';
+  }else{
+    const on=[...new Set(oppEv.map(e=>e.pOpp||'?'))];
+    const cn=(l,f)=>l.filter(f).length;
+    let h='<div class="tw"><table><thead><tr class="grphead"><th rowspan="2">相手選手</th><th colspan="5">アタック</th><th colspan="4">サーブ</th><th colspan="2">ブロック</th></tr>'+
+      '<tr><th>本数</th><th>決定</th><th>被ブロック</th><th>ミス</th><th>決定率</th>'+
+      '<th>本数</th><th>エース</th><th>ミス</th><th>効果率</th><th>本数</th><th>決定</th></tr></thead><tbody>';
+    const rowOf=(label,l)=>{
+      const at=l.filter(e=>e.skill==='相手アタック');
+      const sv=l.filter(e=>e.skill==='相手サーブ');
+      const bk=l.filter(e=>e.skill==='相手ブロック');
+      const ap=cn(at,e=>e.ev==='#'),ab=cn(at,e=>e.ev==='/'),am=cn(at,e=>e.ev==='=');
+      const sp=cn(sv,e=>e.ev==='#'),sm=cn(sv,e=>e.ev==='=');
+      const ser=sv.length?(sp*100+cn(sv,e=>e.ev==='+')*25+cn(sv,e=>e.ev==='/')*25-sm*25)/(sv.length*100):0;
+      return '<td>'+at.length+'</td><td>'+ap+'</td><td>'+ab+'</td><td>'+am+'</td><td>'+(at.length?pct(ap/at.length):'—')+'</td>'+
+        '<td>'+sv.length+'</td><td>'+sp+'</td><td>'+sm+'</td><td>'+(sv.length?pct(ser):'—')+'</td>'+
+        '<td>'+bk.length+'</td><td>'+cn(bk,e=>e.ev==='#')+'</td>';
+    };
+    on.forEach(p=>{h+='<tr><td>'+esc(p)+'</td>'+rowOf(p,oppEv.filter(e=>(e.pOpp||'?')===p))+'</tr>';});
+    h+='<tr class="total"><td>【相手 合計】</td>'+rowOf('計',oppEv)+'</tr>';
+    $('#oppBody').innerHTML=h+'</tbody></table></div>';
+  }
+
   /* --- 得点・失点の内訳 --- */
   const rp={},rl={};
-  list.forEach(e=>{const j=judge(e.skill,e.ev,e.pOwn);if(!e.reason)return;
+  list.forEach(e=>{const j=judge(e.skill,e.ev,e.pOwn,e.pOpp);if(!e.reason)return;
     if(j.h)rp[e.reason]=(rp[e.reason]||0)+1; else rl[e.reason]=(rl[e.reason]||0)+1;});
   const blk=(o,c,t)=>{const ks=Object.keys(o).sort((a,b)=>o[b]-o[a]);const tot=ks.reduce((x,k)=>x+o[k],0);
     if(!tot)return '<div class="note">'+t+'：まだありません</div>';
@@ -924,7 +1089,7 @@ function drawScatter(list,names,setNo){
   const pick=e=>kind==='serve'?e.skill==='サーブ':(kind==='recep'?e.skill==='レセプション':
     (ATTACKS.indexOf(e.skill)>=0&&e.spike!=='チャンス'));
   const pts=names.map(p=>{
-    const my=list.filter(e=>e.pOwn===p&&pick(e));
+    const my=list.filter(e=>e.pOwn===p&&!isOpp(e.skill)&&pick(e));
     if(!my.length)return null;
     const sN=new Set(my.map(e=>Number(e.set))).size||1;
     let c=0;my.forEach(e=>c+=contrib(e));
@@ -964,14 +1129,14 @@ function renderList(){
   if(!idx.length){$('#listBody').innerHTML='<div class="empty-note">記録がありません。<br>「記録」タブでプレーを入力してください。</div>';return;}
   let h='';
   for(let k=idx.length-1;k>=0;k--){
-    const i=idx[k],e=S.events[i],j=judge(e.skill,e.ev,e.pOwn);
+    const i=idx[k],e=S.events[i],j=judge(e.skill,e.ev,e.pOwn,e.pOpp);
     const cls=j.h?'pt':(j.a?'ls':'');
     const det=[e.toss,e.spike,e.serve].filter(Boolean).join('/')||(e.sx?'コース記録あり':'');
-    h+=`<button class="rec ${cls}" data-i="${i}"><span class="st">${e.set}S</span>`+
+    h+=`<button class="rec ${cls}${isOpp(e.skill)?' opp':''}" data-i="${i}"><span class="st">${e.set}S</span>`+
        `<span class="sc">${e.sh}-${e.sa}</span>`+
-       `<span class="pn">${esc(e.pOwn||'—')}</span>`+
+       `<span class="pn">${esc(nameOf(e))}</span>`+
        `<span>${esc(SKILL_L[e.skill]||e.skill)}</span>`+
-       `<span class="sy">${esc(e.ev)}</span>`+
+       `<span class="sy" title="${esc(e.ev)}">${esc((capFor(e.skill)||{})[e.ev]||e.ev)}</span>`+
        `<span class="de">${esc(det)} ${esc(e.rot||'')}</span></button>`;
   }
   $('#listBody').innerHTML=h;
@@ -982,14 +1147,15 @@ function editRec(i){
   const grp=(label,items,cur,name)=>`<div class="rowline" style="margin-top:8px"><span class="glab">${label}</span>
     <div class="rowline wrapy" style="flex:1;margin:0">`+items.map(o=>
       `<button class="b op ${cur===o.v?'on':''}" data-g="${name}" data-v="${esc(o.v)}">${esc(o.l)}</button>`).join('')+'</div></div>';
-  const pls=S.rostOwn.filter(Boolean).map(p=>({v:p,l:p}));
-  $('#sheetBody').innerHTML=`<h3>記録の修正　<span style="color:var(--dim);font-weight:600;font-size:11px">第${e.set}セット ${esc(e.rot||'')} ／ ${e.sh}-${e.sa}</span></h3>`
-    +grp('選手',pls,e.pOwn,'pOwn')
-    +grp('スキル',SKILLS.map(s=>({v:s.k,l:s.l})),e.skill,'skill')
+  const opp=isOpp(e.skill);
+  const pls=(opp?S.rostOpp:S.rostOwn).filter(Boolean).map(p=>({v:p,l:p}));
+  $('#sheetBody').innerHTML=`<h3>記録の修正${opp?'（相手）':''}　<span style="color:var(--dim);font-weight:600;font-size:11px">第${e.set}セット ${esc(e.rot||'')} ／ ${e.sh}-${e.sa}</span></h3>`
+    +grp('選手',pls,opp?e.pOpp:e.pOwn,opp?'pOpp':'pOwn')
+    +grp('スキル',(opp?OPP_SKILLS:SKILLS).map(s=>({v:s.k,l:s.l})),e.skill,'skill')
     +grp('トス',TOSSES.map(t=>({v:t,l:TOSS_L[t]||t})),e.toss,'toss')
     +grp('打ち方',SPIKES.map(s=>({v:s.k,l:s.k})),e.spike,'spike')
     +grp('サーブ',SERVES.map(s=>({v:s,l:SERVE_L[s]})),e.serve,'serve')
-    +grp('評価',EVALS.map(s=>({v:s,l:s})),e.ev,'ev')
+    +grp('評価',EVALS.filter(x=>(capFor(e.skill)||{})[x]).map(x=>({v:x,l:((capFor(e.skill)||{})[x]||x)+' '+x})),e.ev,'ev')
     +grp('ローテ',ROTS.map(r=>({v:r,l:r})),e.rot,'rot')
     +`<div class="two" style="margin-top:14px"><button class="big warn" id="delRec">この記録を削除</button>
       <button class="big go" id="okRec">閉じる</button></div>`;
@@ -1075,48 +1241,55 @@ function renderStat(){
       [s.RC.n,s.RC.A,s.RC.B,s.RC.X,s.RC.C,s.RC.D,s.RC.M,pct(s.RC.rr)],
       [s.BK.n,pct(s.BK.dr),pct(s.BK.er)],[s.fl]);
     h+='<tr class="'+(r.total?'total':'')+'"><td>'+esc(r.p)+'</td>'+c.map(v=>'<td>'+esc(v)+'</td>').join('')+'</tr>';});
-  $('#statBody').innerHTML=h+'</tbody></table></div>';
+  $('#statBody').innerHTML=h+'</tbody></table></div>'+
+    '<div class="note">レセプションの列は元のブックと同じ記号です。'+
+    '<b style="color:var(--text)">A</b>=完璧(#)　<b style="color:var(--text)">B</b>=良(+)　'+
+    '<b style="color:var(--text)">!</b>=得点　<b style="color:var(--text)">C</b>=半失点(/)　'+
+    '<b style="color:var(--text)">D</b>=不良(−)　<b style="color:var(--text)">=</b>=ミス</div>';
 }
 
 /* ---------------- コース図 ---------------- */
 let mapInit=false;
 function renderMapUI(){
   if(!mapInit){
-    $('#fSkill').innerHTML='<option value="">すべて</option><option value="アタック">アタック（RE+TR）</option>'+
-      SKILLS.map(s=>`<option value="${s.k}">${s.l}</option>`).join('');
+    $('#fSkill').innerHTML='<option value="">すべて</option><option value="アタック">アタック（自・相 すべて）</option>'+
+      SKILLS.map(s=>`<option value="${s.k}">${s.l}</option>`).join('')+
+      OPP_SKILLS.map(s=>`<option value="${s.k}">相手 ${s.l}</option>`).join('');
     $('#fToss').innerHTML='<option value="">すべて</option>'+TOSSES.map(t=>`<option value="${t}">${t}</option>`).join('');
     $('#fEval').innerHTML='<option value="">すべて</option><option value="#">得点（#）のみ</option>'+
       '<option value="ミス">ミス（/ =）のみ</option>'+EVALS.map(e=>`<option value="${e}">${e} のみ</option>`).join('');
-    ['#fSkill','#fToss','#fEval','#fSet','#fPlayer'].forEach(i=>$(i).onchange=renderMap);
+    ['#fTeam','#fSkill','#fToss','#fEval','#fSet','#fPlayer'].forEach(i=>$(i).onchange=renderMap);
     mapInit=true;
   }
   const sets=[...new Set(S.events.map(e=>Number(e.set)))].sort((a,b)=>a-b),cs=$('#fSet').value;
   $('#fSet').innerHTML='<option value="">全セット</option>'+sets.map(s=>`<option value="${s}">第${s}セット</option>`).join('');
   $('#fSet').value=sets.map(String).indexOf(cs)>=0?cs:'';
-  const pls=[...new Set(S.events.map(e=>e.pOwn).filter(Boolean))],cp=$('#fPlayer').value;
+  const pls=[...new Set(S.events.map(e=>nameOf(e)).filter(x=>x&&x!=='—'))],cp=$('#fPlayer').value;
   $('#fPlayer').innerHTML='<option value="">全員（選手ごと）</option>'+pls.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
   $('#fPlayer').value=pls.indexOf(cp)>=0?cp:'';
   renderMap();
 }
 function renderMap(){
-  const fk=$('#fSkill').value,ft=$('#fToss').value,fe=$('#fEval').value,fs=$('#fSet').value,fp=$('#fPlayer').value;
+  const fteam=$('#fTeam').value,fk=$('#fSkill').value,ft=$('#fToss').value,fe=$('#fEval').value,fs=$('#fSet').value,fp=$('#fPlayer').value;
   const hit=S.events.filter(e=>{
     if(!e.sx||!e.ex)return false;
+    if(fteam==='own'&&isOpp(e.skill))return false;
+    if(fteam==='opp'&&!isOpp(e.skill))return false;
     if(fs!==''&&Number(e.set)!==Number(fs))return false;
     if(ft!==''&&e.toss!==ft)return false;
-    if(fp!==''&&e.pOwn!==fp)return false;
+    if(fp!==''&&nameOf(e)!==fp)return false;
     if(fe==='ミス'){if(e.ev!=='/'&&e.ev!=='=')return false;}
     else if(fe!==''&&e.ev!==fe)return false;
     if(fk==='アタック'){if(e.skill.indexOf('アタック')<0)return false;}
     else if(fk!==''&&e.skill!==fk)return false;
     return true;});
   if(!hit.length){$('#mapBody').innerHTML='<div class="empty-note">条件に合うデータがありません。<br>コースを記録したプレーだけが表示されます。</div>';return;}
-  const gp={};hit.forEach(e=>{const k=e.pOwn||'(選手なし)';(gp[k]=gp[k]||[]).push(e);});
+  const gp={};hit.forEach(e=>{const k=nameOf(e)||'(選手なし)';(gp[k]=gp[k]||[]).push(e);});
   let h='';
   Object.keys(gp).forEach(p=>{
     const ar=gp[p].map(e=>({sc:+e.sx,sr:+e.sy,ec:+e.ex,er:+e.ey,mc:e.mx?+e.mx:0,mr:e.my?+e.my:0,m:!!e.mx,
-      color:spikeColor(e.spike,e.skill,e.ev),dash:(e.skill==='ブロック'||!!e.mx)}));
-    const pt=gp[p].filter(e=>judge(e.skill,e.ev,e.pOwn).h).length;
+      color:spikeColor(e.spike,e.skill,e.ev),dash:(baseSkill(e.skill)==='ブロック'||!!e.mx)}));
+    const pt=gp[p].filter(e=>judge(e.skill,e.ev,e.pOwn,e.pOpp).h).length;
     h+=`<div class="pcourt"><h4>${esc(p)}<span>${ar.length}本 ・ 得点 ${pt}</span></h4>`+
        `<svg viewBox="0 0 ${NC} ${NR}">${courtBase(ar,{side:false,zone:S.opt.zone})}</svg></div>`;});
   $('#mapBody').innerHTML=h;
@@ -1251,7 +1424,7 @@ function regs(){
 $('#inOwn').oninput=e=>{S.own=e.target.value;render();save();};
 $('#inOpp').oninput=e=>{S.opp=e.target.value;render();save();};
 $('#inMatch').oninput=e=>{S.match=e.target.value;save();};
-const OPTS=[['optCoord','coord'],['optSuggest','suggest'],['optAutoRot','autoRot'],['optZone','zone'],['optWake','wake'],['optVib','vib'],['optOppRoster','oppRoster']];
+const OPTS=[['optSimple','simpleEval'],['optCoord','coord'],['optSuggest','suggest'],['optAutoRot','autoRot'],['optZone','zone'],['optWake','wake'],['optVib','vib'],['optOppRoster','oppRoster']];
 OPTS.forEach(([id,k])=>{$('#'+id).onclick=()=>{S.opt[k]=!S.opt[k];syncOpts();
   if(k==='wake')wake(S.opt[k]);recalc();render();save();};});
 $('#optRotDir').onclick=()=>{S.opt.rotDir=S.opt.rotDir==='up'?'down':'up';syncOpts();recalc();render();save();
@@ -1282,7 +1455,10 @@ function syncForm(){$('#inOwn').value=S.own;$('#inOpp').value=S.opp;$('#inMatch'
     ['チャンス','攻撃としてカウントしない返球。成績表の本数から外れます'],
     ['SO率','サイドアウト率。相手サーブを受けたラリーで得点できた割合'],
     ['Break率','自チームのサーブで始まったラリーで得点できた割合'],
-    ['貢献度','1プレーごとの良し悪しを足し合わせた数。/S は出場セット数で割った平均']];
+    ['貢献度','1プレーごとの良し悪しを足し合わせた数。/S は出場セット数で割った平均'],
+    ['自 / 相','記録画面の左にある切替。「相」にすると相手チームのプレーを記録します。得点・失点は自動で反転します'],
+    ['# + ! / − =','元ブックから引き継いだ評価記号。画面には言葉で出るので覚える必要はありません。書き出すデータにはこの記号が入ります（ブックの集計がこの記号を見ているため）'],
+    ['相手アタック','相手のスパイク。＃＝決まった（こちらの失点）、／＝味方がブロック、＝＝相手のミス（どちらもこちらの得点）']];
   $('#glossBody').innerHTML=G.map(([a,b])=>'<div style="margin-bottom:7px"><b style="color:var(--text)">'+esc(a)+'</b>　'+esc(b)+'</div>').join('');
 })();
 
@@ -1307,7 +1483,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 document.addEventListener('pointerdown',function once(){document.removeEventListener('pointerdown',once);if(S.opt.wake)wake(true);},{once:true});
 
 /* ---------------- Service Worker ---------------- */
-const APP_VER='ver.7.0';
+const APP_VER='ver.9.0';
 $('#verLine').textContent='バレー記録 '+APP_VER;
 $('#btnUpdate').onclick=async()=>{toast('最新版を確認しています…');
   try{if('serviceWorker'in navigator){const r=await navigator.serviceWorker.getRegistration();if(r)await r.update();}}catch(e){}
