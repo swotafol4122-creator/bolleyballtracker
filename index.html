@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="バレー記録">
+<meta name="application-name" content="バレー記録">
+<meta name="description" content="バレーボールの試合データを記録・集計するツール">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0E1116">
+<title>バレー記録 DATA ver.5</title>
+<style>
+:root{
+  --ink:#0E1116; --panel:#171C24; --panel2:#1F2630; --line:#2E3743;
+  --court:#FF8000; --free:#66CCFF; --mark:#FFD400;
+  --text:#ECF0F5; --dim:#8A94A3; --dim2:#5C6673;
+  --pt:#2ECC71; --ls:#FF5757; --sel:#FFD400;
+  --sp-hard:#FF0000; --sp-soft:#0070C0; --sp-feint:#00B050; --sp-push:#8E4898; --sp-none:#969696;
+  --ev-pt:#0032FF;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--ink);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",YuGothic,"Noto Sans JP",system-ui,sans-serif;
+  -webkit-user-select:none;user-select:none;overscroll-behavior:none}
+body{padding-bottom:env(safe-area-inset-bottom)}
+button{font-family:inherit;color:inherit;border:0;background:none;touch-action:manipulation;cursor:pointer}
+input,select{font-family:inherit;-webkit-user-select:text;user-select:text}
+
+/* ---------- scoreboard ---------- */
+.board{position:sticky;top:0;z-index:40;background:var(--ink);
+  border-bottom:1px solid var(--line);padding:6px 10px 7px;padding-top:calc(6px + env(safe-area-inset-top))}
+.board-row{display:flex;align-items:center;gap:8px}
+.setchip{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--ink);background:var(--mark);
+  padding:3px 9px;border-radius:999px;white-space:nowrap}
+.score{display:flex;align-items:baseline;gap:6px;margin-left:auto}
+.score b{font-size:30px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.score .hy{color:var(--dim2);font-size:20px;font-weight:700}
+.tname{font-size:10px;color:var(--dim);letter-spacing:.08em;text-align:center;line-height:1}
+.scoreblk{display:flex;flex-direction:column;align-items:center;gap:3px}
+.board-sub{display:flex;align-items:center;gap:6px;margin-top:6px}
+.mini{font-size:11px;color:var(--dim);letter-spacing:.06em}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:39}
+.tabs button{flex:1;padding:11px 2px 9px;font-size:12px;font-weight:600;color:var(--dim);
+  border-bottom:2px solid transparent;letter-spacing:.03em}
+.tabs button.on{color:var(--text);border-bottom-color:var(--mark)}
+.page{display:none;padding:10px 10px 24px}
+.page.on{display:block}
+
+/* ---------- court ---------- */
+.courtwrap{position:relative;background:var(--panel);border-radius:12px;padding:8px;border:1px solid var(--line)}
+svg.court{display:block;width:100%;height:auto;border-radius:6px;overflow:visible}
+.courthint{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:11px;color:var(--dim)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--mark);flex:none}
+.taps{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:700;color:var(--text);font-size:12px}
+.taps.ok{color:var(--pt)}
+
+/* ---------- generic groups ---------- */
+.grp{margin-top:11px}
+.glabel{font-size:10px;letter-spacing:.14em;color:var(--dim2);font-weight:700;margin-bottom:5px}
+.row{display:flex;flex-wrap:wrap;gap:5px}
+.chip{padding:9px 11px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
+  font-size:13px;font-weight:600;line-height:1;min-height:38px;display:flex;align-items:center;justify-content:center}
+.chip.on{background:var(--mark);color:#141821;border-color:var(--mark)}
+.chip.sm{font-size:12px;padding:8px 9px;min-height:34px}
+.chip.ghost{background:transparent;color:var(--dim);border-style:dashed}
+.chip.act{background:var(--panel2);color:var(--text)}
+.chip:active{transform:scale(.96)}
+.chip.wide{flex:1}
+.chip.hard.on{background:var(--sp-hard);border-color:var(--sp-hard);color:#fff}
+.chip.soft.on{background:var(--sp-soft);border-color:var(--sp-soft);color:#fff}
+.chip.feint.on{background:var(--sp-feint);border-color:var(--sp-feint);color:#fff}
+.chip.push.on{background:var(--sp-push);border-color:var(--sp-push);color:#fff}
+.chip.chance.on{background:var(--sp-none);border-color:var(--sp-none);color:#fff}
+
+/* roster */
+.rost{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.pbtn{padding:7px 2px;border-radius:7px;background:var(--panel2);border:1px solid var(--line);
+  font-size:13px;font-weight:700;min-height:36px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbtn.empty{color:var(--dim2);font-weight:500;border-style:dashed}
+.pbtn.on{background:var(--mark);color:#141821;border-color:var(--mark)}
+.pbtn.opp.on{background:var(--free);color:#0E1116;border-color:var(--free)}
+
+/* eval bar */
+.evalbar{position:sticky;bottom:0;z-index:38;background:linear-gradient(to top,var(--ink) 72%,transparent);
+  padding:8px 10px calc(10px + env(safe-area-inset-bottom));margin:12px -10px 0}
+.curline{display:flex;width:100%;align-items:center;gap:6px;margin-bottom:5px;padding:6px 10px;
+  border-radius:8px;background:var(--panel2);border:1px solid var(--line);font-size:11px;color:var(--dim);
+  overflow:hidden;white-space:nowrap;text-align:left}
+.curline b{color:var(--text);font-weight:700}
+.curline .need{margin-left:auto;color:var(--ls);font-weight:700;flex:none}
+.curline .ready{margin-left:auto;color:var(--pt);font-weight:700;flex:none}
+.evalgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.ev{border-radius:10px;background:var(--panel2);border:1px solid var(--line);padding:8px 2px 6px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;min-height:56px}
+.ev .sym{font-size:21px;font-weight:800;line-height:1}
+.ev .cap{font-size:9px;color:var(--dim);line-height:1.15;text-align:center;min-height:11px}
+.ev.pt{border-color:rgba(46,204,113,.55)} .ev.pt .sym{color:var(--pt)}
+.ev.ls{border-color:rgba(255,87,87,.5)} .ev.ls .sym{color:var(--ls)}
+.ev.off{opacity:.32}
+.ev:active{transform:scale(.95)}
+
+/* tables */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+table{border-collapse:collapse;font-size:11px;white-space:nowrap;min-width:100%}
+th,td{padding:5px 7px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+th{background:var(--panel2);color:var(--dim);font-weight:700;font-size:10px;position:sticky;top:0}
+td:first-child,th:first-child{text-align:left;position:sticky;left:0;background:var(--panel);z-index:2;font-weight:700}
+th:first-child{background:var(--panel2);z-index:3}
+tr.total td{background:#26211A;font-weight:700}
+tr.total td:first-child{background:#26211A}
+.grphead th{text-align:center;background:#232C38;color:var(--text)}
+
+/* misc */
+.note{font-size:11px;color:var(--dim);line-height:1.6;margin-top:8px}
+.field{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.field label{font-size:11px;color:var(--dim);width:74px;flex:none}
+.field input,.field select{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+  border-radius:7px;padding:9px;font-size:14px;min-width:0}
+.rgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.rgrid input{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;
+  padding:8px 2px;font-size:13px;text-align:center;width:100%;min-width:0}
+.hd{font-size:13px;font-weight:700;margin:16px 0 7px;letter-spacing:.02em}
+.hd:first-child{margin-top:0}
+.sep{height:1px;background:var(--line);margin:16px 0}
+.logrow{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);font-size:12px}
+.logrow .sc{font-weight:800;font-variant-numeric:tabular-nums;min-width:52px}
+.logrow.pt .sc{color:var(--pt)} .logrow.ls .sc{color:var(--ls)}
+.logrow .rs{color:var(--dim);margin-left:auto;font-size:11px;text-align:right}
+.empty-note{padding:26px 14px;text-align:center;color:var(--dim2);font-size:12px;line-height:1.7}
+.pcourt{margin-bottom:16px}
+.pcourt h4{margin:0 0 6px;font-size:13px;font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:10px;color:var(--dim);margin-top:8px}
+.legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:4px}
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(10px);z-index:99;
+  background:#F2F5F9;color:#0E1116;font-size:13px;font-weight:700;padding:10px 16px;border-radius:999px;
+  opacity:0;pointer-events:none;transition:.18s;max-width:88vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.chip:focus-visible,.ev:focus-visible,.pbtn:focus-visible,button:focus-visible{outline:2px solid var(--mark);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<div class="board">
+  <div class="board-row">
+    <span class="setchip" id="setChip">第1セット</span>
+    <button class="chip sm ghost" id="btnRot">ローテ S1</button>
+    <div class="score">
+      <div class="scoreblk"><span class="tname" id="nmOwn">名工大</span><b id="scOwn">0</b></div>
+      <span class="hy">–</span>
+      <div class="scoreblk"><span class="tname" id="nmOpp">相手校</span><b id="scOpp">0</b></div>
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button data-tab="rec" class="on">記録</button>
+  <button data-tab="stat">成績</button>
+  <button data-tab="log">得点ログ</button>
+  <button data-tab="map">コース図</button>
+  <button data-tab="set">設定</button>
+</div>
+
+<!-- ============ 記録 ============ -->
+<div class="page on" id="page-rec">
+  <div class="courtwrap">
+    <svg class="court" id="court" viewBox="0 0 51 78" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="courthint">
+      <span class="dot"></span><span id="hintText">始点をタップ</span>
+      <span class="taps" id="tapCnt">0 / 2</span>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="row">
+      <button class="chip sm" id="btnOT">ワンタッチ / 3点入力</button>
+      <button class="chip sm ghost" id="btnUntap">1点戻す</button>
+      <button class="chip sm ghost" id="btnClearIn">入力リセット</button>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="glabel">選手（名工大）</div>
+    <div class="rost" id="rostOwn"></div>
+    <div class="glabel" style="margin-top:7px">選手（相手校）</div>
+    <div class="rost" id="rostOpp"></div>
+  </div>
+
+  <div class="grp">
+    <div class="glabel">スキル</div>
+    <div class="row" id="skillRow"></div>
+  </div>
+
+  <div class="grp" id="grpServe">
+    <div class="glabel">サーブ</div>
+    <div class="row" id="serveRow"></div>
+  </div>
+
+  <div class="grp" id="grpToss">
+    <div class="glabel">トス</div>
+    <div class="row" id="tossRow"></div>
+  </div>
+
+  <div class="grp" id="grpSpike">
+    <div class="glabel">スパイク</div>
+    <div class="row" id="spikeRow"></div>
+  </div>
+
+  <div class="grp">
+    <div class="row">
+      <button class="chip sm ghost wide" id="btnUndo">直前の記録を取り消す</button>
+      <button class="chip sm ghost" id="btnDP">直接得点</button>
+      <button class="chip sm ghost" id="btnDL">直接失点</button>
+    </div>
+  </div>
+
+  <div class="evalbar">
+    <button class="curline" id="curLine"></button>
+    <div class="evalgrid" id="evalGrid"></div>
+  </div>
+</div>
+
+<!-- ============ 成績 ============ -->
+<div class="page" id="page-stat">
+  <div class="row" style="margin-bottom:10px">
+    <select id="statSet" style="background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px 10px;font-size:13px"></select>
+    <button class="chip sm act" id="btnStatCsv">CSV書き出し</button>
+  </div>
+  <div id="statBody"></div>
+</div>
+
+<!-- ============ 得点ログ ============ -->
+<div class="page" id="page-log">
+  <div class="row" style="margin-bottom:10px">
+    <button class="chip sm act" id="btnLogCsv">CSV書き出し</button>
+    <span class="mini" style="align-self:center" id="logCount"></span>
+  </div>
+  <div class="tw" id="logBody" style="padding:0"></div>
+</div>
+
+<!-- ============ コース図 ============ -->
+<div class="page" id="page-map">
+  <div class="field"><label>スキル</label><select id="fSkill"></select></div>
+  <div class="field"><label>トス</label><select id="fToss"></select></div>
+  <div class="field"><label>セット</label><select id="fSet"></select></div>
+  <div class="field"><label>選手</label><select id="fPlayer"></select></div>
+  <div class="legend">
+    <span><i style="background:var(--sp-hard)"></i>強打</span>
+    <span><i style="background:var(--sp-soft)"></i>軟打</span>
+    <span><i style="background:var(--sp-feint)"></i>フェイント</span>
+    <span><i style="background:var(--sp-push)"></i>プッシュ</span>
+    <span><i style="background:var(--ev-pt)"></i>得点(#)</span>
+    <span><i style="background:var(--sp-hard)"></i>ミス(/ =)</span>
+    <span>点線＝ブロック / ワンタッチ</span>
+  </div>
+  <div id="mapBody" style="margin-top:12px"></div>
+</div>
+
+<!-- ============ 設定 ============ -->
+<div class="page" id="page-set">
+  <div class="hd">試合</div>
+  <div class="field"><label>自チーム</label><input id="inOwn" placeholder="名工大"></div>
+  <div class="field"><label>相手チーム</label><input id="inOpp" placeholder="相手校"></div>
+  <div class="field"><label>試合名</label><input id="inMatch" placeholder="例）春季リーグ 対○○大"></div>
+
+  <div class="hd">名簿（名工大）</div>
+  <div class="rgrid" id="regOwn"></div>
+  <div class="hd">名簿（相手校）</div>
+  <div class="rgrid" id="regOpp"></div>
+  <div class="note">上段＝1〜6・Li、下段＝控え。空欄のボタンは記録画面に出ません。</div>
+
+  <div class="sep"></div>
+  <div class="hd">書き出し</div>
+  <div class="row">
+    <button class="chip sm act wide" id="btnCsvAppend">データ追記用CSV（見出しなし）</button>
+    <button class="chip sm act wide" id="btnCsvFull">データCSV（見出しあり）</button>
+  </div>
+  <div class="row" style="margin-top:5px">
+    <button class="chip sm act wide" id="btnJson">バックアップ（JSON）</button>
+  </div>
+  <div class="note">追記用CSVはブックの「データ」シートのA2以降にそのまま貼り付けられます（列順・列数は元のまま）。書き出し後に「成績」ボタンを押せば元の集計マクロがそのまま使えます。</div>
+
+  <div class="hd">読み込み・合流</div>
+  <div class="row">
+    <button class="chip sm act wide" id="btnImport">CSV / JSON を読み込む</button>
+  </div>
+  <input type="file" id="fileIn" accept=".csv,.json,text/csv,application/json" style="display:none">
+  <div class="note">別の端末で記録したCSVを追加すれば1つにまとめられます（元のブックの4枚の入力シートと同じ使い方）。</div>
+
+  <div class="sep"></div>
+  <div class="hd">セット・試合</div>
+  <div class="row">
+    <button class="chip sm act wide" id="btnNextSet">次のセットへ</button>
+    <button class="chip sm ghost wide" id="btnNewGame">次の試合へ</button>
+  </div>
+  <div class="row" style="margin-top:5px">
+    <button class="chip sm ghost wide" id="btnClearNames">名簿を全消去</button>
+    <button class="chip sm ghost wide" id="btnClearAll">記録を全消去</button>
+  </div>
+
+  <div class="sep"></div>
+  <div class="hd">アプリ</div>
+  <div class="row">
+    <button class="chip sm ghost wide" id="btnUpdate">最新版に更新する</button>
+  </div>
+  <div class="note">ホーム画面から起動しているときは、ここを押すと最新版を取り込みます。</div>
+
+  <div class="sep"></div>
+  <div class="hd">評価基準</div>
+  <div id="critBody" class="note" style="color:var(--dim)"></div>
+  <div class="note" style="margin-top:14px;color:var(--dim2)">
+    記録は端末内に自動保存されます。一度開けば電波のない体育館でも起動します。<br>
+    <span id="verLine"></span>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* =========================================================
+   コート座標系：元ブックの入力シートとまったく同じ
+   列 2〜52（51列） / 行 6〜83（78行）  1マス = 1/3 m
+   コート内 = 列14〜40, 行18〜71 / ネット = 行44と45の境
+   アタックライン = 行35/36 の境, 行53/54 の境
+   ========================================================= */
+const C0=2, C1=52, R0=6, R1=83;          // 描画範囲
+const IN_C0=14, IN_C1=40, IN_R0=18, IN_R1=71; // コート内
+const NET_R=45, ATK_F=36, ATK_N=54;      // 境界となる行
+const NC=C1-C0+1, NR=R1-R0+1;            // 51 x 78
+
+const SKILLS=[
+  {k:'サーブ',            l:'サーブ'},
+  {k:'レセプション',      l:'レセプション'},
+  {k:'レセプションアタック',l:'REアタック'},
+  {k:'トランジションアタック',l:'TRアタック'},
+  {k:'ブロック',          l:'ブロック'},
+  {k:'ディグ',            l:'ディグ'},
+  {k:'反則',              l:'反則'},
+  {k:'その他',            l:'その他'}
+];
+const SERVES=['ジャンプ','ジャンプフローター','フローター'];
+const SERVE_L={'ジャンプ':'ジャンプ','ジャンプフローター':'ジャンフロ','フローター':'フローター'};
+const TOSSES=['平行','Aクイック','B','C','D','Bick','二段','アンダー'];
+const TOSS_L={'Aクイック':'A'};
+const SPIKES=[
+  {k:'強打',    c:'hard'},
+  {k:'軟打',    c:'soft'},
+  {k:'プッシュ',c:'push'},
+  {k:'フェイント',c:'feint'},
+  {k:'チャンス',c:'chance'}
+];
+const EVALS=['#','+','!','/','-','='];
+const ATTACKS=['アタック','レセプションアタック','トランジションアタック'];
+const ROTS=['S1','S2','S3','S4','S5','S6'];
+const SLOTS=['1','2','3','4','5','6','Li'];
+
+/* 評価の意味（元マクロ SetSkill と同じ） */
+const CRIT={
+  attack:{'#':'決定(得点)','+':'良：敵が辛うじてディフェンス','!':'ブロックされるが味方がつなぐ','-':'可：敵が簡単にディフェンス','/':'ブロックされる(失点)','=':'ミス(ネット、アウトなど)'},
+  'サーブ':{'#':'得点：サービスエース、又はサーブレシーブがミス','+':'優：相手レシーブが悪く1カ所からしか攻撃を使えない','!':'良：相手レシーブが1〜2mネットから離れ、いずれかのコンビ攻撃が使えない','-':'不良：相手が完璧にレシーブ','/':'半得点：相手サーブレシーブがネットを越えるなど、攻撃ができない','=':'ミス(アウト、ネット、フットフォルト)'},
+  'レセプション':{'#':'完璧(最高の位置とボールの軌跡)','+':'良：ネットから1〜2m離れ、いずれかのコンビ攻撃が使えない','!':'得点：相手のミス等','-':'不良：ネットから3m以上離れ、1カ所しか攻撃を使えない','/':'半失点(パスがネットを越えたり、攻撃ができない)','=':'ミス(失点)'},
+  'ブロック':{'#':'決定(得点)','+':'良：ワンタッチのあと味方が簡単につなげられる','!':'','-':'可：ワンタッチするが味方は簡単につなげられなかった','/':'失点(ネットタッチ)','=':'ミス(ブロックアウト、吸いこみなど)'},
+  'その他':{'#':'得点','+':'','!':'','-':'','/':'','=':'失点'},
+  '反則':{'#':'得点','+':'','!':'','-':'','/':'','=':'失点'}
+};
+CRIT['ディグ']=CRIT['レセプション'];
+/* 評価ボタンに出す短い見出し（成績表の列名と揃える） */
+const CAP={
+  attack:{'#':'得点','+':'良','!':'リバウンド','-':'可','/':'被ブロック','=':'ミス'},
+  'サーブ':{'#':'得点','+':'優','!':'良','-':'不良','/':'半得点','=':'ミス'},
+  'レセプション':{'#':'A 完璧','+':'B 良','!':'得点','-':'D 不良','/':'C 半失点','=':'ミス'},
+  'ブロック':{'#':'決定','+':'良','!':'','-':'可','/':'失点','=':'ミス'},
+  'その他':{'#':'得点','+':'','!':'','-':'','/':'','=':'失点'},
+  '反則':{'#':'得点','+':'','!':'','-':'','/':'','=':'失点'}
+};
+CAP['ディグ']=CAP['レセプション'];
+
+function critFor(skill){
+  if(!skill) return null;
+  if(ATTACKS.indexOf(skill)>=0) return CRIT.attack;
+  return CRIT[skill]||null;
+}
+function capFor(skill){
+  if(!skill) return null;
+  if(ATTACKS.indexOf(skill)>=0) return CAP.attack;
+  return CAP[skill]||null;
+}
+
+/* ---------------- 保存 ---------------- */
+const KEY='volley_data_ver5';
+const store={
+  async get(k){
+    if(window.storage&&window.storage.get){ try{const r=await window.storage.get(k);return r?r.value:null}catch(e){return null} }
+    try{return localStorage.getItem(k)}catch(e){return null}
+  },
+  async set(k,v){
+    if(window.storage&&window.storage.set){ try{await window.storage.set(k,v);return}catch(e){} }
+    try{localStorage.setItem(k,v)}catch(e){}
+  }
+};
+
+function blankState(){
+  return{
+    v:5, match:'', own:'名工大', opp:'相手校',
+    rostOwn:new Array(14).fill(''), rostOpp:new Array(14).fill(''),
+    set:1, rot:'S1', events:[],
+    cur:{taps:[],ot:false,skill:'',serve:'',toss:'',spike:'',pOwn:'',pOpp:''}
+  };
+}
+let S=blankState();
+let saveTimer=null;
+function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>store.set(KEY,JSON.stringify(S)),180); }
+
+/* ---------------- 小道具 ---------------- */
+const $=s=>document.querySelector(s);
+const $$=s=>Array.from(document.querySelectorAll(s));
+let toastT=null;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),1700);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ---------------- コート描画 ---------------- */
+let _uid=0;
+function courtSVG(arrows,opt){
+  opt=opt||{}; const U='m'+(_uid++)+'_';
+  const x=c=>c-C0, y=r=>r-R0;               // セル左上（単位＝マス）
+  const cx=c=>c-C0+0.5, cy=r=>r-R0+0.5;     // セル中心
+  const W=0.34;                              // ライン幅
+  let s='';
+  s+=`<rect x="0" y="0" width="${NC}" height="${NR}" fill="#66CCFF"/>`;
+  s+=`<rect x="${x(IN_C0)}" y="${y(IN_R0)}" width="${IN_C1-IN_C0+1}" height="${IN_R1-IN_R0+1}" fill="#FF8000"/>`;
+  const L=(x1,y1,x2,y2,w,dash)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#fff" stroke-width="${w||W}"${dash?` stroke-dasharray="${dash}"`:''} stroke-linecap="butt"/>`;
+  const lx=x(IN_C0), rx=x(IN_C1+1), ty=y(IN_R0), by=y(IN_R1+1);
+  s+=L(lx,ty,rx,ty); s+=L(lx,by,rx,by);            // エンドライン
+  s+=L(lx,ty,lx,by); s+=L(rx,ty,rx,by);            // サイドライン
+  s+=L(lx,y(ATK_F),rx,y(ATK_F));                   // アタックライン（奥）
+  s+=L(lx,y(ATK_N),rx,y(ATK_N));                   // アタックライン（手前）
+  // アタックラインの破線延長（元ブックと同じ 列7〜13 / 41〜47）
+  [y(ATK_F),y(ATK_N)].forEach(yy=>{
+    s+=L(x(7),yy,x(14),yy,0.28,'1,0.8');
+    s+=L(x(41),yy,x(48),yy,0.28,'1,0.8');
+  });
+  // ネット
+  s+=`<line x1="${lx-2}" y1="${y(NET_R)}" x2="${rx+2}" y2="${y(NET_R)}" stroke="#0E1116" stroke-width="0.9" opacity=".55"/>`;
+  s+=`<line x1="${lx-2}" y1="${y(NET_R)}" x2="${rx+2}" y2="${y(NET_R)}" stroke="#fff" stroke-width="0.5"/>`;
+  if(opt.side!==false){
+    s+=`<text x="${(lx+rx)/2}" y="${y(IN_R0)+4.6}" fill="#fff" opacity=".62" font-size="3" text-anchor="middle" font-weight="700">相手コート</text>`;
+    s+=`<text x="${(lx+rx)/2}" y="${y(IN_R1+1)-2.2}" fill="#fff" opacity=".62" font-size="3" text-anchor="middle" font-weight="700">自コート</text>`;
+  }
+  // 矢印
+  if(arrows&&arrows.length){
+    s+=`<defs>`;
+    const cols={};
+    arrows.forEach((a,i)=>{cols[a.color]=1});
+    Object.keys(cols).forEach((c,i)=>{
+      s+=`<marker id="${U}ah${i}" markerWidth="4" markerHeight="4" refX="3.2" refY="2" orient="auto"><path d="M0,0 L4,2 L0,4 z" fill="${c}"/></marker>`;
+    });
+    s+=`</defs>`;
+    const idx={}; Object.keys(cols).forEach((c,i)=>idx[c]=U+'ah'+i);
+    arrows.forEach(a=>{
+      const d=a.dash?' stroke-dasharray="1.6,1.1"':'';
+      if(a.m){
+        s+=`<line x1="${cx(a.sc)}" y1="${cy(a.sr)}" x2="${cx(a.mc)}" y2="${cy(a.mr)}" stroke="${a.color}" stroke-width=".62"${d}/>`;
+        s+=`<line x1="${cx(a.mc)}" y1="${cy(a.mr)}" x2="${cx(a.ec)}" y2="${cy(a.er)}" stroke="${a.color}" stroke-width=".62"${d} marker-end="url(#${idx[a.color]})"/>`;
+      }else{
+        s+=`<line x1="${cx(a.sc)}" y1="${cy(a.sr)}" x2="${cx(a.ec)}" y2="${cy(a.er)}" stroke="${a.color}" stroke-width=".62"${d} marker-end="url(#${idx[a.color]})"/>`;
+      }
+    });
+  }
+  // いま入力中の点
+  if(opt.taps){
+    opt.taps.forEach((t,i)=>{
+      const col=i===0?'#FFD400':(opt.taps.length===3&&i===1?'#FFFFFF':'#FFD400');
+      s+=`<circle cx="${cx(t.c)}" cy="${cy(t.r)}" r="1.5" fill="none" stroke="#0E1116" stroke-width="1.1"/>`;
+      s+=`<circle cx="${cx(t.c)}" cy="${cy(t.r)}" r="1.5" fill="${col}" opacity=".92"/>`;
+      s+=`<text x="${cx(t.c)}" y="${cy(t.r)+1.05}" font-size="2.4" font-weight="800" fill="#0E1116" text-anchor="middle">${i+1}</text>`;
+    });
+    if(opt.taps.length>=2){
+      const p=opt.taps, col=opt.previewColor||'#FFD400';
+      for(let i=0;i<p.length-1;i++){
+        s+=`<line x1="${cx(p[i].c)}" y1="${cy(p[i].r)}" x2="${cx(p[i+1].c)}" y2="${cy(p[i+1].r)}" stroke="${col}" stroke-width=".55" opacity=".9"${opt.dash?' stroke-dasharray="1.6,1.1"':''}/>`;
+      }
+    }
+  }
+  return s;
+}
+
+function drawCourt(){
+  const c=S.cur;
+  const need=c.ot?3:2;
+  $('#court').innerHTML=courtSVG(null,{taps:c.taps,dash:c.ot,previewColor:(c.skill&&c.spike)?spikeColor(c.spike,c.skill,null):'#FFD400'});
+  $('#tapCnt').textContent=c.taps.length+' / '+need;
+  $('#tapCnt').classList.toggle('ok',c.taps.length>=need);
+  const hints=['始点をタップ', c.ot?'タッチ点をタップ':'終点をタップ', c.ot?'終点をタップ':'評価ボタンで記録', '評価ボタンで記録'];
+  $('#hintText').textContent = c.taps.length>=need ? '評価ボタンで記録' : hints[c.taps.length];
+}
+
+function updateCurLine(){
+  const c=S.cur, need=c.ot?3:2;
+  const parts=[];
+  if(c.pOwn)parts.push('<b>'+esc(c.pOwn)+'</b>');
+  if(c.skill)parts.push('<b>'+esc(SKILLS.filter(s=>s.k===c.skill).map(s=>s.l)[0]||c.skill)+'</b>');
+  if(c.serve)parts.push(esc(SERVE_L[c.serve]||c.serve));
+  if(c.toss)parts.push(esc(c.toss));
+  if(c.spike)parts.push(esc(c.spike));
+  const left = parts.length?parts.join(' ｜ '):'<span>選手とスキルを選んでください</span>';
+  const ok = c.skill && c.taps.length>=need;
+  const right = ok ? '<span class="ready">記録できます</span>'
+                   : '<span class="need">'+(!c.skill?'スキル未選択':'コート '+c.taps.length+'/'+need+'点')+'</span>';
+  $('#curLine').innerHTML=left+right;
+}
+$('#curLine').onclick=()=>{ const el=$('.courtwrap');
+  if(el&&el.scrollIntoView){ try{el.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){el.scrollIntoView();} } };
+
+function spikeColor(spike,skill,ev){
+  if(skill&&skill.indexOf('アタック')>=0&&spike){
+    if(spike==='強打')return'#FF0000';
+    if(spike==='軟打')return'#0070C0';
+    if(spike==='フェイント')return'#00B050';
+    if(spike==='プッシュ')return'#8E4898';
+    return'#969696';
+  }
+  if(ev==='#')return'#0032FF';
+  if(ev==='/'||ev==='=')return'#FF0000';
+  return'#969696';
+}
+
+/* コートのタップ */
+$('#court').addEventListener('click',e=>{
+  const svg=$('#court');
+  let ux,uy;
+  if(svg.getScreenCTM&&svg.getScreenCTM()){
+    const m=svg.getScreenCTM().inverse();
+    const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY;
+    const q=p.matrixTransform(m); ux=q.x; uy=q.y;
+  }else{
+    const b=svg.getBoundingClientRect();
+    ux=(e.clientX-b.left)/b.width*NC; uy=(e.clientY-b.top)/b.height*NR;
+  }
+  const col=C0+Math.floor(ux), row=R0+Math.floor(uy);
+  if(col<C0||col>C1||row<R0||row>R1)return;
+  const need=S.cur.ot?3:2;
+  if(S.cur.taps.length>=need){ S.cur.taps=[]; }
+  S.cur.taps.push({c:col,r:row});
+  drawCourt(); updateCurLine(); save();
+});
+
+/* ---------------- ボタン群を作る ---------------- */
+function buildChips(el,items,get,set){
+  el.innerHTML='';
+  items.forEach(it=>{
+    const b=document.createElement('button');
+    b.className='chip'+(it.cls?' '+it.cls:'');
+    b.textContent=it.label;
+    b.onclick=()=>{ set(get()===it.value?'':it.value); };
+    b.dataset.v=it.value;
+    el.appendChild(b);
+  });
+}
+function markChips(el,val){
+  Array.from(el.children).forEach(b=>b.classList.toggle('on',b.dataset.v===val&&val!==''));
+}
+
+buildChips($('#skillRow'),SKILLS.map(s=>({value:s.k,label:s.l})),()=>S.cur.skill,v=>{
+  S.cur.skill=v;
+  S.cur.ot = (v==='ブロック');
+  if(S.cur.taps.length>(S.cur.ot?3:2)) S.cur.taps=S.cur.taps.slice(0,S.cur.ot?3:2);
+  render();
+});
+buildChips($('#serveRow'),SERVES.map(s=>({value:s,label:SERVE_L[s]||s})),()=>S.cur.serve,v=>{S.cur.serve=v;render();});
+buildChips($('#tossRow'),TOSSES.map(s=>({value:s,label:TOSS_L[s]||s})),()=>S.cur.toss,v=>{S.cur.toss=v;render();});
+buildChips($('#spikeRow'),SPIKES.map(s=>({value:s.k,label:s.k,cls:s.c})),()=>S.cur.spike,v=>{S.cur.spike=v;render();});
+
+/* 評価ボタン */
+(function(){
+  const g=$('#evalGrid');
+  EVALS.forEach(sym=>{
+    const b=document.createElement('button');
+    b.className='ev'; b.dataset.sym=sym;
+    b.innerHTML=`<span class="sym">${sym==='#'?'#':esc(sym)}</span><span class="cap"></span>`;
+    b.onclick=()=>record(sym);
+    g.appendChild(b);
+  });
+})();
+
+/* 名簿ボタン */
+function buildRoster(el,which){
+  el.innerHTML='';
+  const list=which==='own'?S.rostOwn:S.rostOpp;
+  list.forEach((nm,i)=>{
+    const b=document.createElement('button');
+    b.className='pbtn'+(which==='opp'?' opp':'')+(nm?'':' empty');
+    b.textContent=nm||SLOTS[i%7];
+    b.disabled=!nm;
+    b.dataset.v=nm;
+    b.onclick=()=>{
+      if(which==='own') S.cur.pOwn = (S.cur.pOwn===nm?'':nm);
+      else S.cur.pOpp = (S.cur.pOpp===nm?'':nm);
+      render();
+    };
+    el.appendChild(b);
+  });
+}
+
+/* ---------------- 得点判定（元マクロ RecordData と同じ） ---------------- */
+function judge(skill,sym,pOwn){
+  if(ATTACKS.indexOf(skill)>=0){
+    if(sym==='#')return{h:1,a:0,reason:(pOwn||'')+'決定'};
+    if(sym==='/'||sym==='=')return{h:0,a:1,reason:'アタックミス/被ブロック'};
+  }else if(skill==='サーブ'||skill==='ブロック'||skill==='反則'){
+    if(sym==='#')return{h:1,a:0,reason:skill+'得点'};
+    if(sym==='=')return{h:0,a:1,reason:'自失/ミス'};
+  }else if(skill==='レセプション'||skill==='ディグ'){
+    if(sym==='!')return{h:1,a:0,reason:skill+'中得点'};
+    if(sym==='=')return{h:0,a:1,reason:'被エース/被弾'};
+  }else if(skill==='その他'){
+    if(sym==='#')return{h:1,a:0,reason:'その他(得点)'};
+    if(sym==='=')return{h:0,a:1,reason:'その他(失点)'};
+  }
+  return{h:0,a:0,reason:null};
+}
+function baseScore(){
+  const e=S.events[S.events.length-1];
+  if(!e||Number(e.set)!==Number(S.set))return{h:0,a:0};
+  return{h:Number(e.sh)||0,a:Number(e.sa)||0};
+}
+
+function record(sym){
+  const c=S.cur;
+  if(!c.skill){ toast('スキルを選んでください'); return; }
+  const need=c.ot?3:2;
+  if(c.taps.length<need){ toast('コートのタップが足りません（'+need+'点）'); return; }
+  const p=c.taps;
+  const start=p[0], mid=c.ot?p[1]:null, end=c.ot?p[2]:p[1];
+  const b=baseScore(), j=judge(c.skill,sym,c.pOwn);
+  const ev={
+    sx:start.c, sy:start.r, ex:end.c, ey:end.r,
+    mx:mid?mid.c:'', my:mid?mid.r:'',
+    skill:c.skill, pOwn:c.pOwn, pOpp:c.pOpp,
+    serve:c.serve, toss:c.toss, spike:c.spike, ev:sym,
+    sh:b.h+j.h, sa:b.a+j.a, set:S.set, rot:S.rot,
+    reason:j.reason, ts:Date.now()
+  };
+  S.events.push(ev);
+  clearInput();
+  toast(j.reason? (j.h?'得点 ':'失点 ')+ev.sh+' - '+ev.sa : '記録しました');
+  render(); save();
+}
+
+function directPoint(isPoint){
+  const b=baseScore();
+  S.events.push({
+    sx:'',sy:'',ex:'',ey:'',mx:'',my:'',
+    skill:'直接入力', pOwn:S.cur.pOwn, pOpp:'',
+    serve:'',toss:'',spike:'', ev:isPoint?'#':'=',
+    sh:b.h+(isPoint?1:0), sa:b.a+(isPoint?0:1), set:S.set, rot:S.rot,
+    reason:isPoint?'ダイレクト得点':'ダイレクト失点', ts:Date.now()
+  });
+  clearInput();
+  toast((isPoint?'得点 ':'失点 ')+S.events[S.events.length-1].sh+' - '+S.events[S.events.length-1].sa);
+  render(); save();
+}
+
+function clearInput(){
+  S.cur={taps:[],ot:false,skill:'',serve:'',toss:'',spike:'',pOwn:'',pOpp:''};
+}
+
+/* ---------------- 画面更新 ---------------- */
+function render(){
+  const c=S.cur;
+  $('#setChip').textContent='第'+S.set+'セット';
+  $('#btnRot').textContent='ローテ '+S.rot;
+  $('#nmOwn').textContent=S.own||'自チーム';
+  $('#nmOpp').textContent=S.opp||'相手';
+  const b=baseScore();
+  $('#scOwn').textContent=b.h; $('#scOpp').textContent=b.a;
+
+  markChips($('#skillRow'),c.skill);
+  markChips($('#serveRow'),c.serve);
+  markChips($('#tossRow'),c.toss);
+  markChips($('#spikeRow'),c.spike);
+  $('#btnOT').classList.toggle('on',c.ot);
+
+  buildRoster($('#rostOwn'),'own'); buildRoster($('#rostOpp'),'opp');
+  Array.from($('#rostOwn').children).forEach(x=>x.classList.toggle('on',!!c.pOwn&&x.dataset.v===c.pOwn));
+  Array.from($('#rostOpp').children).forEach(x=>x.classList.toggle('on',!!c.pOpp&&x.dataset.v===c.pOpp));
+
+  // 関係ないグループは畳む
+  $('#grpServe').style.display = (c.skill===''||c.skill==='サーブ')?'':'none';
+  $('#grpToss').style.display  = (c.skill===''||ATTACKS.indexOf(c.skill)>=0)?'':'none';
+  $('#grpSpike').style.display = (c.skill===''||ATTACKS.indexOf(c.skill)>=0)?'':'none';
+
+  // 評価ボタンの説明
+  const cp=capFor(c.skill);
+  Array.from($('#evalGrid').children).forEach(btn=>{
+    const sym=btn.dataset.sym;
+    const j=judge(c.skill,sym,c.pOwn);
+    btn.classList.toggle('pt',j.h===1);
+    btn.classList.toggle('ls',j.a===1);
+    btn.classList.toggle('off',!c.skill||(cp&&!cp[sym]));
+    btn.querySelector('.cap').textContent = cp? (cp[sym]||'') : '';
+  });
+
+  updateCurLine();
+  drawCourt();
+  renderLog();
+  if($('#page-stat').classList.contains('on')) renderStat();
+  if($('#page-map').classList.contains('on')) renderMapFilters();
+}
+
+/* ---------------- 成績（元マクロ CreateStatsReport と同じ定義） ---------------- */
+function statSetFilter(){ const v=$('#statSet').value; return v===''?null:Number(v); }
+function evs(setNo){ return S.events.filter(e=> setNo==null || Number(e.set)===setNo ); }
+
+function cnt(list,f){ let n=0; for(const e of list) if(f(e)) n++; return n; }
+function pct(x){ return (x*100).toFixed(1)+'%'; }
+
+function playerStats(list,pl){
+  const mine=e=>e.pOwn===pl;
+  const notChance=e=>e.spike!=='チャンス';
+  const ra=e=>mine(e)&&(e.skill==='レセプションアタック'||e.skill==='アタック')&&notChance(e);
+  const ta=e=>mine(e)&&e.skill==='トランジションアタック'&&notChance(e);
+  const blk=(f)=>{
+    const n=cnt(list,f);
+    const g=s=>cnt(list,e=>f(e)&&e.ev===s);
+    const pt=g('#'),good=g('+'),reb=g('!'),bl=g('/'),ok=g('-'),ms=g('=');
+    return{n,pt,good,reb,bl,ok,ms,
+      dr:n?pt/n:0, er:n?(pt-bl-ms)/n:0};
+  };
+  const A=blk(ra), B=blk(ta);
+  const T={n:A.n+B.n,pt:A.pt+B.pt,good:A.good+B.good,reb:A.reb+B.reb,bl:A.bl+B.bl,ok:A.ok+B.ok,ms:A.ms+B.ms};
+  T.dr=T.n?T.pt/T.n:0; T.er=T.n?(T.pt-T.bl-T.ms)/T.n:0;
+
+  const sv=e=>mine(e)&&e.skill==='サーブ';
+  const sN=cnt(list,sv), sG=s=>cnt(list,e=>sv(e)&&e.ev===s);
+  const SV={n:sN,pt:sG('#'),ex:sG('+'),good:sG('!'),half:sG('/'),bad:sG('-'),ms:sG('=')};
+  SV.er = sN? (SV.pt*100+SV.ex*25+SV.half*25-SV.ms*25)/(sN*100) : 0;
+
+  const rc=e=>mine(e)&&e.skill==='レセプション';
+  const rN=cnt(list,rc), rG=s=>cnt(list,e=>rc(e)&&e.ev===s);
+  const RC={n:rN,A:rG('#'),B:rG('+'),X:rG('!'),C:rG('/'),D:rG('-'),M:rG('=')};
+  RC.rr = rN? (RC.A+RC.B*0.5)/rN : 0;
+
+  const bk=e=>mine(e)&&e.skill==='ブロック';
+  const bN=cnt(list,bk);
+  const BK={n:bN, dr:bN?cnt(list,e=>bk(e)&&e.ev==='#')/bN:0,
+    er:bN?(cnt(list,e=>bk(e)&&e.ev==='#')-cnt(list,e=>bk(e)&&e.ev==='='))/bN:0};
+
+  const fl=cnt(list,e=>mine(e)&&e.skill==='反則');
+  return{A,B,T,SV,RC,BK,fl};
+}
+function sumStats(rows){
+  const z=()=>({n:0,pt:0,good:0,reb:0,bl:0,ok:0,ms:0});
+  const A=z(),B=z(),T=z();
+  const SV={n:0,pt:0,ex:0,good:0,half:0,bad:0,ms:0};
+  const RC={n:0,A:0,B:0,X:0,C:0,D:0,M:0};
+  const BK={n:0}; let fl=0, bkPt=0, bkMs=0;
+  rows.forEach(r=>{
+    ['n','pt','good','reb','bl','ok','ms'].forEach(k=>{A[k]+=r.s.A[k];B[k]+=r.s.B[k];T[k]+=r.s.T[k];});
+    ['n','pt','ex','good','half','bad','ms'].forEach(k=>SV[k]+=r.s.SV[k]);
+    ['n','A','B','X','C','D','M'].forEach(k=>RC[k]+=r.s.RC[k]);
+    BK.n+=r.s.BK.n; bkPt+=Math.round(r.s.BK.dr*r.s.BK.n); bkMs+=Math.round((r.s.BK.dr-r.s.BK.er)*r.s.BK.n);
+    fl+=r.s.fl;
+  });
+  [A,B,T].forEach(o=>{o.dr=o.n?o.pt/o.n:0;o.er=o.n?(o.pt-o.bl-o.ms)/o.n:0;});
+  SV.er=SV.n?(SV.pt*100+SV.ex*25+SV.half*25-SV.ms*25)/(SV.n*100):0;
+  RC.rr=RC.n?(RC.A+RC.B*0.5)/RC.n:0;
+  BK.dr=BK.n?bkPt/BK.n:0; BK.er=BK.n?(bkPt-bkMs)/BK.n:0;
+  return{A,B,T,SV,RC,BK,fl};
+}
+
+function statTable(){
+  const setNo=statSetFilter(), list=evs(setNo);
+  const names=[]; S.events.forEach(e=>{ if(e.pOwn&&names.indexOf(e.pOwn)<0)names.push(e.pOwn); });
+  if(!names.length) return null;
+  const rows=names.map(p=>({p,s:playerStats(list,p)}));
+  rows.push({p:'【チーム総合】',s:sumStats(rows),total:true});
+  return rows;
+}
+
+const G1=['本数','得点','良','リバウンド','被ブロック','可','ミス','決定率','効果率'];
+function renderStat(){
+  buildStatSet();
+  const rows=statTable();
+  if(!rows){ $('#statBody').innerHTML='<div class="empty-note">まだ記録がありません。<br>「記録」タブでプレーを入力すると、ここに集計が出ます。</div>'; return; }
+  let h='<div class="tw"><table><thead>';
+  h+='<tr class="grphead"><th rowspan="2">選手名</th>'+
+     '<th colspan="9">レセプションアタック</th><th colspan="9">トランジションアタック</th><th colspan="9">アタック（全体）</th>'+
+     '<th colspan="8">サーブ</th><th colspan="8">レセプション</th><th colspan="3">ブロック</th><th rowspan="2">反則数</th></tr>';
+  h+='<tr>'+G1.map(x=>`<th>${x}</th>`).join('').repeat(3)
+    +['本数','得点','優','良','半得点','不良','ミス','効果率'].map(x=>`<th>${x}</th>`).join('')
+    +['受数','A','B','!','C','D','=','返球率'].map(x=>`<th>${x}</th>`).join('')
+    +['本数','決定率','効果率'].map(x=>`<th>${x}</th>`).join('')+'</tr></thead><tbody>';
+  rows.forEach(r=>{
+    const s=r.s;
+    const g=o=>[o.n,o.pt,o.good,o.reb,o.bl,o.ok,o.ms,pct(o.dr),pct(o.er)];
+    const cells=[].concat(g(s.A),g(s.B),g(s.T),
+      [s.SV.n,s.SV.pt,s.SV.ex,s.SV.good,s.SV.half,s.SV.bad,s.SV.ms,pct(s.SV.er)],
+      [s.RC.n,s.RC.A,s.RC.B,s.RC.X,s.RC.C,s.RC.D,s.RC.M,pct(s.RC.rr)],
+      [s.BK.n,pct(s.BK.dr),pct(s.BK.er)],[s.fl]);
+    h+=`<tr class="${r.total?'total':''}"><td>${esc(r.p)}</td>`+cells.map(v=>`<td>${esc(v)}</td>`).join('')+'</tr>';
+  });
+  h+='</tbody></table></div>';
+  $('#statBody').innerHTML=h;
+}
+
+/* ---------------- 得点ログ ---------------- */
+function renderLog(){
+  const pts=S.events.filter(e=>e.reason);
+  $('#logCount').textContent=pts.length?pts.length+'件':'';
+  if(!pts.length){ $('#logBody').innerHTML='<div class="empty-note">得点・失点が入るとここに並びます。</div>'; return; }
+  let h='';
+  for(let i=pts.length-1;i>=0;i--){
+    const e=pts[i];
+    const prev = pts.slice(0,i).reverse().find(x=>Number(x.set)===Number(e.set));
+    const gained = !prev ? (e.sh>0?'pt':'ls') : (e.sh>prev.sh?'pt':'ls');
+    h+=`<div class="logrow ${gained}"><span class="mini">第${esc(e.set)}S</span>`+
+       `<span class="sc">${e.sh} - ${e.sa}</span>`+
+       `<span>${esc(e.reason)}</span>`+
+       `<span class="rs">${esc(e.skill)} / ${esc(e.rot)}</span></div>`;
+  }
+  $('#logBody').innerHTML=h;
+}
+
+/* ---------------- コース図 ---------------- */
+let mapInit=false;
+function renderMapFilters(){
+  if(!mapInit){
+    const fs=$('#fSkill');
+    fs.innerHTML='<option value="">すべて</option><option value="アタック">アタック（RE+TR）</option>'+
+      SKILLS.map(s=>`<option value="${s.k}">${s.l}</option>`).join('');
+    const ft=$('#fToss'); ft.innerHTML='<option value="">すべて</option>'+TOSSES.map(t=>`<option value="${t}">${t}</option>`).join('');
+    [fs,ft].forEach(x=>x.onchange=renderMap);
+    $('#fSet').onchange=renderMap; $('#fPlayer').onchange=renderMap;
+    mapInit=true;
+  }
+  const sets=[...new Set(S.events.map(e=>Number(e.set)))].sort((a,b)=>a-b);
+  const cur=$('#fSet').value;
+  $('#fSet').innerHTML='<option value="">全セット</option>'+sets.map(s=>`<option value="${s}">第${s}セット</option>`).join('');
+  $('#fSet').value=sets.map(String).indexOf(cur)>=0?cur:'';
+  const pls=[...new Set(S.events.map(e=>e.pOwn).filter(Boolean))];
+  const cp=$('#fPlayer').value;
+  $('#fPlayer').innerHTML='<option value="">全員（選手ごとに表示）</option>'+pls.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
+  $('#fPlayer').value=pls.indexOf(cp)>=0?cp:'';
+  renderMap();
+}
+function renderMap(){
+  const fSkill=$('#fSkill').value, fToss=$('#fToss').value, fSet=$('#fSet').value, fPl=$('#fPlayer').value;
+  const hit=S.events.filter(e=>{
+    if(!e.sx||!e.ex)return false;
+    if(fSet!==''&&Number(e.set)!==Number(fSet))return false;
+    if(fToss!==''&&e.toss!==fToss)return false;
+    if(fPl!==''&&e.pOwn!==fPl)return false;
+    if(fSkill===''){}
+    else if(fSkill==='アタック'){ if(e.skill.indexOf('アタック')<0)return false; }
+    else if(e.skill!==fSkill)return false;
+    return true;
+  });
+  if(!hit.length){ $('#mapBody').innerHTML='<div class="empty-note">条件に合うデータがありません。<br>フィルターを緩めてみてください。</div>'; return; }
+  const groups={};
+  hit.forEach(e=>{ const k=e.pOwn||'(選手なし)'; (groups[k]=groups[k]||[]).push(e); });
+  let h='';
+  Object.keys(groups).forEach(p=>{
+    const arrows=groups[p].map(e=>({
+      sc:Number(e.sx),sr:Number(e.sy),ec:Number(e.ex),er:Number(e.ey),
+      mc:e.mx?Number(e.mx):null,mr:e.my?Number(e.my):null,m:!!e.mx,
+      color:spikeColor(e.spike,e.skill,e.ev),
+      dash:(e.skill==='ブロック'||!!e.mx)
+    }));
+    h+=`<div class="pcourt"><h4>${esc(p)}　<span class="mini">${arrows.length}本</span></h4>`+
+       `<svg class="court" viewBox="0 0 ${NC} ${NR}">${courtSVG(arrows,{side:false})}</svg></div>`;
+  });
+  $('#mapBody').innerHTML=h;
+}
+
+/* ---------------- 書き出し ---------------- */
+const DATA_HEAD=['始点ｘ','始点y','終点ｘ','終点ｙ','タッチ点ｘ','タッチ点y','スキル','自チーム','相手チーム','サーブ','トス','スパイク','評価','自チーム','相手チーム','セット数','ローテーション'];
+function evRow(e){ return [e.sx,e.sy,e.ex,e.ey,e.mx,e.my,e.skill,e.pOwn,e.pOpp,e.serve,e.toss,e.spike,e.ev,e.sh,e.sa,e.set,e.rot]; }
+function csvCell(v){ v=v==null?'':String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+function toCsv(rows){ return '\uFEFF'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n'); }
+function download(name,text,type){
+  const blob=new Blob([text],{type:type||'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},400);
+}
+function stamp(){ const d=new Date(),p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes()); }
+
+$('#btnCsvAppend').onclick=()=>{
+  if(!S.events.length)return toast('記録がありません');
+  download('データ追記用_'+stamp()+'.csv',toCsv(S.events.map(evRow)));
+  toast('書き出しました');
+};
+$('#btnCsvFull').onclick=()=>{
+  if(!S.events.length)return toast('記録がありません');
+  download('データ_'+stamp()+'.csv',toCsv([DATA_HEAD].concat(S.events.map(evRow))));
+  toast('書き出しました');
+};
+$('#btnJson').onclick=()=>{ download('バックアップ_'+stamp()+'.json',JSON.stringify(S),'application/json'); toast('保存しました'); };
+$('#btnLogCsv').onclick=()=>{
+  const pts=S.events.filter(e=>e.reason);
+  if(!pts.length)return toast('記録がありません');
+  download('得点ログ_'+stamp()+'.csv',toCsv([['セット','スコア','要因/選手','スキル','ローテーション']]
+    .concat(pts.map(e=>['第'+e.set+'セット',e.sh+' - '+e.sa,e.reason,e.skill,e.rot]))));
+  toast('書き出しました');
+};
+$('#btnStatCsv').onclick=()=>{
+  const rows=statTable(); if(!rows)return toast('記録がありません');
+  const out=[['選手名'].concat(G1,G1,G1,['本数','得点','優','良','半得点','不良','ミス','効果率'],
+    ['受数','A','B','!','C','D','=','返球率'],['本数','決定率','効果率'],['反則数'])];
+  rows.forEach(r=>{const s=r.s,g=o=>[o.n,o.pt,o.good,o.reb,o.bl,o.ok,o.ms,(o.dr).toFixed(3),(o.er).toFixed(3)];
+    out.push([r.p].concat(g(s.A),g(s.B),g(s.T),
+      [s.SV.n,s.SV.pt,s.SV.ex,s.SV.good,s.SV.half,s.SV.bad,s.SV.ms,s.SV.er.toFixed(3)],
+      [s.RC.n,s.RC.A,s.RC.B,s.RC.X,s.RC.C,s.RC.D,s.RC.M,s.RC.rr.toFixed(3)],
+      [s.BK.n,s.BK.dr.toFixed(3),s.BK.er.toFixed(3)],[s.fl]));});
+  download('成績_'+stamp()+'.csv',toCsv(out)); toast('書き出しました');
+};
+
+/* ---------------- 読み込み ---------------- */
+$('#btnImport').onclick=()=>$('#fileIn').click();
+$('#fileIn').onchange=e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    let txt=String(rd.result).replace(/^\uFEFF/,'');
+    try{
+      if(/\.json$/i.test(f.name)){
+        const o=JSON.parse(txt);
+        if(!o.events)throw 0;
+        if(confirm('読み込んだ内容で今の記録を置き換えます。よろしいですか？（今の記録は消えます）')){
+          S=Object.assign(blankState(),o); render(); save(); toast('読み込みました');
+        }
+      }else{
+        const rows=parseCsv(txt);
+        let start=0;
+        if(rows.length&&String(rows[0][0]).indexOf('始点')>=0)start=1;
+        const add=[];
+        for(let i=start;i<rows.length;i++){
+          const r=rows[i]; if(!r||r.length<13||r.every(x=>x===''))continue;
+          add.push({sx:r[0],sy:r[1],ex:r[2],ey:r[3],mx:r[4],my:r[5],skill:r[6],pOwn:r[7],pOpp:r[8],
+            serve:r[9],toss:r[10],spike:r[11],ev:r[12],sh:Number(r[13]||0),sa:Number(r[14]||0),
+            set:Number(r[15]||1),rot:r[16]||'',reason:null,ts:Date.now()+i});
+        }
+        if(!add.length)return toast('読み取れる行がありませんでした');
+        if(confirm(add.length+'件を今の記録に追加します。よろしいですか？')){
+          add.forEach(a=>{ a.reason = a.skill==='直接入力'
+            ? (a.ev==='#'?'ダイレクト得点':'ダイレクト失点')
+            : judge(a.skill,a.ev,a.pOwn).reason; });
+          S.events=S.events.concat(add);
+          S.events.sort((a,b)=>(Number(a.set)-Number(b.set))||(a.sh+a.sa)-(b.sh+b.sa));
+          render(); save(); toast(add.length+'件を追加しました');
+        }
+      }
+    }catch(err){ toast('ファイルを読み取れませんでした'); }
+    e.target.value='';
+  };
+  rd.readAsText(f);
+};
+function parseCsv(t){
+  const rows=[];let row=[],cell='',q=false;
+  for(let i=0;i<t.length;i++){
+    const ch=t[i];
+    if(q){ if(ch==='"'){ if(t[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=ch; }
+    else if(ch==='"')q=true;
+    else if(ch===','){row.push(cell);cell='';}
+    else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+    else if(ch!=='\r')cell+=ch;
+  }
+  if(cell!==''||row.length){row.push(cell);rows.push(row);}
+  return rows;
+}
+
+/* ---------------- 操作ボタン ---------------- */
+$('#btnOT').onclick=()=>{ S.cur.ot=!S.cur.ot; if(!S.cur.ot&&S.cur.taps.length>2)S.cur.taps=S.cur.taps.slice(0,2); render(); save(); };
+$('#btnUntap').onclick=()=>{ S.cur.taps.pop(); drawCourt(); updateCurLine(); save(); };
+$('#btnClearIn').onclick=()=>{ clearInput(); render(); save(); toast('入力をリセットしました'); };
+$('#btnDP').onclick=()=>directPoint(true);
+$('#btnDL').onclick=()=>directPoint(false);
+$('#btnUndo').onclick=()=>{
+  if(!S.events.length)return toast('取り消す記録がありません');
+  const e=S.events.pop(); render(); save();
+  toast('取り消しました（'+(e.skill||'—')+'）');
+};
+$('#btnRot').onclick=()=>{ S.rot=ROTS[(ROTS.indexOf(S.rot)+1)%6]; render(); save(); };
+$('#btnNextSet').onclick=()=>{ S.set++; clearInput(); render(); save(); toast('第'+S.set+'セットへ'); };
+$('#btnNewGame').onclick=()=>{
+  if(!confirm('次の試合に進みます。\n\nOK：記録を消して第1セットから始める\nキャンセル：やめる\n\n※先に「データ追記用CSV」を書き出しておいてください。'))return;
+  S.events=[]; S.set=1; S.rot='S1'; clearInput(); render(); save(); toast('新しい試合を開始しました');
+};
+$('#btnClearNames').onclick=()=>{ if(!confirm('名簿をすべて消しますか？'))return;
+  S.rostOwn=new Array(14).fill(''); S.rostOpp=new Array(14).fill(''); buildRegs(); render(); save(); };
+$('#btnClearAll').onclick=()=>{ if(!confirm('記録をすべて消しますか？この操作は元に戻せません。'))return;
+  S.events=[]; clearInput(); render(); save(); toast('記録を消去しました'); };
+
+$('#statSet').onchange=renderStat;
+
+/* タブ */
+$$('.tabs button').forEach(b=>b.onclick=()=>{
+  $$('.tabs button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  $$('.page').forEach(p=>p.classList.remove('on'));
+  $('#page-'+b.dataset.tab).classList.add('on');
+  window.scrollTo(0,0);
+  if(b.dataset.tab==='stat')renderStat();
+  if(b.dataset.tab==='map')renderMapFilters();
+});
+
+/* 設定入力 */
+function buildRegs(){
+  const mk=(el,arr)=>{
+    el.innerHTML='';
+    arr.forEach((v,i)=>{
+      const inp=document.createElement('input');
+      inp.value=v; inp.placeholder=SLOTS[i%7]; inp.maxLength=6;
+      inp.oninput=()=>{arr[i]=inp.value.trim();render();save();};
+      el.appendChild(inp);
+    });
+  };
+  mk($('#regOwn'),S.rostOwn); mk($('#regOpp'),S.rostOpp);
+}
+$('#inOwn').oninput=e=>{S.own=e.target.value;render();save();};
+$('#inOpp').oninput=e=>{S.opp=e.target.value;render();save();};
+$('#inMatch').oninput=e=>{S.match=e.target.value;save();};
+
+/* 成績のセット選択 */
+function buildStatSet(){
+  const sets=[...new Set(S.events.map(e=>Number(e.set)))].sort((a,b)=>a-b);
+  const cur=$('#statSet').value;
+  $('#statSet').innerHTML='<option value="">全セット合算</option>'+sets.map(s=>`<option value="${s}">第${s}セットのみ</option>`).join('');
+  $('#statSet').value=sets.map(String).indexOf(cur)>=0?cur:'';
+}
+/* 評価基準の一覧 */
+(function(){
+  let h='';
+  const order=[['サーブ','サーブ'],['レセプション','レセプション・ディグ'],['attack','アタック'],['ブロック','ブロック']];
+  order.forEach(([k,label])=>{
+    const c=k==='attack'?CRIT.attack:CRIT[k];
+    h+=`<div style="margin-bottom:10px"><b style="color:var(--text)">${label}</b><br>`;
+    EVALS.forEach(s=>{ if(c[s]) h+=`<span style="display:inline-block;width:1.4em;color:var(--mark);font-weight:700">${s==='#'?'#':esc(s)}</span>${esc(c[s])}<br>`; });
+    h+='</div>';
+  });
+  $('#critBody').innerHTML=h;
+})();
+
+/* ---------------- オフライン対応（Service Worker） ---------------- */
+const APP_VER='ver.5.0';
+$('#verLine').textContent='バレー記録 '+APP_VER;
+$('#btnUpdate').onclick=async()=>{
+  toast('最新版を確認しています…');
+  try{
+    if('serviceWorker' in navigator){
+      const r=await navigator.serviceWorker.getRegistration();
+      if(r) await r.update();
+    }
+  }catch(e){}
+  setTimeout(()=>location.reload(),1000);
+};
+if('serviceWorker' in navigator){
+  const had=!!navigator.serviceWorker.controller;
+  let refreshing=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(had&&!refreshing){ refreshing=true; location.reload(); }
+  });
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});
+  });
+}
+
+/* ---------------- 起動 ---------------- */
+(async function(){
+  const raw=await store.get(KEY);
+  if(raw){ try{ const o=JSON.parse(raw); if(o&&o.events) S=Object.assign(blankState(),o); }catch(e){} }
+  if(!S.cur)S.cur=blankState().cur;
+  $('#inOwn').value=S.own; $('#inOpp').value=S.opp; $('#inMatch').value=S.match||'';
+  buildRegs();
+  render();
+})();
+</script>
+</body>
+</html>
