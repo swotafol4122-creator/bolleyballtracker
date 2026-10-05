@@ -352,6 +352,12 @@ tr.total td:first-child{background:#2A2418}
 .field input,.field select{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--text);
   border-radius:8px;padding:0 10px;height:46px;font-size:15px;min-width:0}
 .rgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.mbrow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:4px}
+.mbtog{height:30px;border-radius:6px;background:var(--panel);border:1px dashed var(--line);
+  color:var(--dim2);font-size:9.5px;font-weight:800}
+.mbtog.on{background:#FF8A3D;color:#141821;border:1px solid #FF8A3D}
+.mblab{display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;color:var(--dim2)}
+.rgrid input.ismb{border-color:#FF8A3D;box-shadow:inset 0 0 0 1px rgba(255,138,61,.4)}
 .rgrid input{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:7px;
   padding:0 2px;height:46px;font-size:15px;text-align:center;width:100%;min-width:0}
 .note{font-size:11px;color:var(--dim);line-height:1.65;margin-top:8px}
@@ -438,7 +444,10 @@ tr.total td:first-child{background:#2A2418}
     <div id="stepRost">
       <div class="grid7" id="rostOwn"></div>
       <div class="grid7" id="rostOpp" style="margin-top:var(--gap);display:none"></div>
-      <div class="dhint" id="stepHint" style="height:var(--h-op);margin-top:var(--gap)">コートの人型をタップして選手を選びます</div>
+      <div class="drow" style="margin-top:var(--gap)">
+        <div class="dhint" id="stepHint">コートの人型をタップして選手を選びます</div>
+        <button class="b op" id="subBtn" style="flex:0 0 78px;height:var(--h-op)">選手交代</button>
+      </div>
     </div>
 
     <div id="stepSkill">
@@ -545,11 +554,14 @@ tr.total td:first-child{background:#2A2418}
   <div class="note"><b style="color:var(--text)">上段の 1〜6 は「開始時のゾーン」</b>です。
   1 がサーブを打つ位置（右後ろ）、2 が右前、3 が中前、4 が左前、5 が左後ろ、6 が中後ろ。
   この順で入れておくと、布陣の人型がローテに合わせて回ります。<br>
-  Li と下段は控えです。記録画面では名簿の行に出ます。空欄のところは出ません。</div>
+  Li と下段は控えです。記録画面では名簿の行に出ます。空欄のところは出ません。<br>
+  番号の下の <b style="color:#FF8A3D">ミドル</b> を押しておくと、その選手が後衛に回ったとき
+  <b style="color:var(--text)">リベロと自動で交代</b>します（ゾーン1でサーブのときはミドルが戻ります）。</div>
 
   <div class="hd">動作</div>
   <button class="sw" id="optCoord"><span>コース入力を必須にする<span class="sub">オフなら、コートを押さなくても評価だけで記録できます</span></span><span class="kn"></span></button>
   <button class="sw" id="optSuggest"><span>次のスキルを先に選んでおく<span class="sub">レセプション→REアタックなど、流れから予測します</span></span><span class="kn"></span></button>
+  <button class="sw" id="optLibero"><span>リベロを自動で入れる<span class="sub">「ミドル」と印を付けた選手が後衛に回ったら、リベロと入れ替えます</span></span><span class="kn"></span></button>
   <button class="sw" id="optLineup"><span>布陣から選手を選ぶ<span class="sub">コート上の人型をタップして選手を選びます。ローテに合わせて並びが回ります</span></span><span class="kn"></span></button>
   <button class="sw" id="optSimple"><span>評価をかんたん3〜4択にする<span class="sub">「決めた／続いた／ミス」だけにします。慣れてきたらオフに（保存される記号は同じ）</span></span><span class="kn"></span></button>
   <button class="sw" id="optAutoRot"><span>ローテとサーブ権を自動計算<span class="sub">サイドアウトのたびにローテを1つ進めます。ずれたらヘッダーで直せます</span></span><span class="kn"></span></button>
@@ -718,9 +730,10 @@ const store={
 function blank(){return{
   v:6,match:'',own:'名工大',opp:'相手校',
   rostOwn:new Array(14).fill(''),rostOpp:new Array(14).fill(''),
+  mbOwn:new Array(6).fill(false),mbOpp:new Array(6).fill(false),
   set:1,rot:'S1',events:[],serveFirst:{},rot0:{},rotOpp0:{},otPref:false,
   cur:{taps:[],ot:false,side:'own',skill:'',serve:'',toss:'',spike:'',pOwn:'',pOpp:''},
-  opt:{lineup:true,simpleEval:false,coord:false,suggest:true,zone:true,sound:true,wake:true,vib:true,oppRoster:false,autoRot:true,rotDir:'down'}
+  opt:{libero:true,lineup:true,simpleEval:false,coord:false,suggest:true,zone:true,sound:true,wake:true,vib:true,oppRoster:false,autoRot:true,rotDir:'down'}
 };}
 let DER={},RALLY=[],setEndSeen={};
 let S=blank(), saveT=null;
@@ -1515,10 +1528,28 @@ function oppSteps(){
   const d=DER[S.set];
   return (((S.rotOpp0&&S.rotOpp0[S.set])||0)+((d&&d.oppSteps)||0))%6;
 }
-function inZone(side,z){
-  const line=(side==='own'?S.rostOwn:S.rostOpp).slice(0,6);
+/* ミドルが後衛に回ったらリベロと入れ替える。
+   ただしゾーン1でそのチームがサーブを打つときは、ミドルが戻って自分で打つ。 */
+function lineOf(side){
+  const arr=side==='own'?S.rostOwn:S.rostOpp;
+  const mb =(side==='own'?S.mbOwn:S.mbOpp)||[];
+  const li =arr[6]||'';
+  const st =side==='own'?rotSteps(curRot()):oppSteps();
+  const out={};
+  for(let z=1;z<=6;z++) out[z]=arr[(z-1+st)%6]||'';
+  out._li=0;
+  if(li&&S.opt.libero!==false){
+    let mz=0;
+    for(const z of [6,5,1]){ if(mb[(z-1+st)%6]){mz=z;break;} }
+    if(mz&&!(mz===1&&curServe()===side)){ out._for=out[mz]; out[mz]=li; out._li=mz; }
+  }
+  return out;
+}
+function inZone(side,z){ return lineOf(side)[z]||''; }
+function isMB(side,z){
+  const mb=(side==='own'?S.mbOwn:S.mbOpp)||[];
   const st=side==='own'?rotSteps(curRot()):oppSteps();
-  return line[(z-1+st)%6]||'';
+  return !!mb[(z-1+st)%6];
 }
 function zoneAt(c,r){
   if(c<IN_C0||c>IN_C1)return null;
@@ -1534,7 +1565,9 @@ const FIG={
   own :{t:'#3A4A5E',b:'#141C26',h:'#4A5C72',hd:'#2B3747'},
   opp :{t:'#3A9FD6',b:'#0E4466',h:'#54B8E8',hd:'#1C6E99'},
   ownS:{t:'#FFE87A',b:'#E8A200',h:'#FFF3B8',hd:'#F0C200'},
-  oppS:{t:'#BFE9FF',b:'#2E9FD6',h:'#E2F5FF',hd:'#58BFEE'}
+  oppS:{t:'#BFE9FF',b:'#2E9FD6',h:'#E2F5FF',hd:'#58BFEE'},
+  li  :{t:'#F4F7FA',b:'#A9B7C4',h:'#FFFFFF',hd:'#C3CFDA'},
+  lio :{t:'#DFF0FA',b:'#8DB6CE',h:'#F2FAFF',hd:'#A9CADD'}
 };
 function figDefs(){
   let d='<defs>';
@@ -1546,12 +1579,12 @@ function figDefs(){
   return d+'</defs>';
 }
 /* 人型ひとつ（影・陰影・ふちの光で立体に見せる） */
-function figSVG(x,y,num,side,sel){
-  const k=(side==='opp')?(sel?'oppS':'opp'):(sel?'ownS':'own');
-  const ink=sel?'#14181F':'#F2F6FA';
+function figSVG(x,y,num,side,sel,li,mb){
+  const k=sel?((side==='opp')?'oppS':'ownS'):(li?((side==='opp')?'lio':'li'):((side==='opp')?'opp':'own'));
+  const ink=(sel||li)?'#14181F':'#F2F6FA';
   const empty=!num;
   const g=t=>t?` transform="rotate(90 ${x} ${y}) translate(${x} ${y}) scale(.72) translate(${-x} ${-y})"`:'';
-  const inner=
+  const inner=''+
     /* 床の影 */
     `<ellipse cx="${x+.5}" cy="${y+4.75}" rx="3.1" ry=".95" fill="#000" opacity="${empty?.12:.3}"/>`+
     /* 脚 */
@@ -1568,6 +1601,11 @@ function figSVG(x,y,num,side,sel){
     /* 頭 */
     `<circle cx="${x}" cy="${y-4.25}" r="1.85" fill="url(#hd_${k})" stroke="#07090D" stroke-width=".3" opacity="${empty?.4:1}"${empty?' stroke-dasharray="1,.7"':''}/>`+
     `<circle cx="${x-.62}" cy="${y-4.85}" r=".52" fill="#fff" opacity="${empty?0:.42}"/>`+
+    /* リベロ・ミドルの印 */
+    (li?`<circle cx="${x+2.8}" cy="${y-5.1}" r="1.25" fill="#2ECC71" stroke="#07090D" stroke-width=".22"/>`+
+        `<text x="${x+2.8}" y="${y-5.05}" font-size="1.7" font-weight="800" fill="#07090D" text-anchor="middle" dominant-baseline="central">L</text>`:'')+
+    ((mb&&!li)?`<circle cx="${x+2.8}" cy="${y-5.1}" r="1.25" fill="#FF8A3D" stroke="#07090D" stroke-width=".22"/>`+
+        `<text x="${x+2.8}" y="${y-5.05}" font-size="1.7" font-weight="800" fill="#07090D" text-anchor="middle" dominant-baseline="central">M</text>`:'')+
     /* 背番号 */
     `<text x="${x}" y="${y-.1}" font-size="${String(num).length>2?2.5:3.2}" font-weight="800" `+
       `fill="${empty?'#F2F6FA':ink}" text-anchor="middle" dominant-baseline="central" opacity="${empty?.55:1}" `+
@@ -1581,10 +1619,11 @@ function drawLineup(){
   const c=S.cur;
   let g='';
   ['opp','own'].forEach(side=>{
+    const L=lineOf(side);
     for(let z=1;z<=6;z++){
-      const p=ZPOS[side][z], nm=inZone(side,z);
+      const p=ZPOS[side][z], nm=L[z];
       const sel=!!nm&&((side==='own'&&c.side==='own'&&c.pOwn===nm)||(side==='opp'&&c.side==='opp'&&c.pOpp===nm));
-      g+=figSVG(p[0]-C0+.5,p[1]-R0+.5,nm,side,sel);
+      g+=figSVG(p[0]-C0+.5,p[1]-R0+.5,nm,side,sel,L._li===z,isMB(side,z));
       if(z===1&&curServe()===side&&nm){
         const bx=p[0]-C0+4.3, by=p[1]-R0-4.2;
         g+=`<g${LAND?` transform="rotate(90 ${bx} ${by}) translate(${bx} ${by}) scale(.72) translate(${-bx} ${-by})"`:''}>`
@@ -1630,15 +1669,65 @@ function editSlot(side,z){
     '<div class="note" style="margin:0 0 10px">開始時のポジション '+(idx+1)+' 番目の選手です。背番号でも名前でもかまいません。</div>'+
     '<input id="slotIn" maxlength="6" style="width:100%;background:var(--panel2);border:1px solid var(--line);'+
     'color:var(--text);border-radius:8px;padding:0 12px;height:52px;font-size:20px;text-align:center;font-weight:800">'+
-    '<div class="two" style="margin-top:12px"><button class="big warn" id="slotDel">空にする</button>'+
+    '<button class="sw" id="slotMB" style="margin-top:12px"><span>ミドルブロッカー'+
+      '<span class="sub">後衛に回ったらリベロと自動で交代します（ゾーン1でサーブのときはミドルが戻ります）</span></span>'+
+      '<span class="kn"></span></button>'+
+    '<div class="two" style="margin-top:6px"><button class="big warn" id="slotDel">空にする</button>'+
     '<button class="big go" id="slotOk">決定</button></div>';
+  const mb=side==='own'?S.mbOwn:S.mbOpp;
   const inp=$('#slotIn'); inp.value=arr[idx]||'';
+  $('#slotMB').classList.toggle('on',!!mb[idx]);
+  $('#slotMB').onclick=()=>{mb[idx]=!mb[idx];$('#slotMB').classList.toggle('on',!!mb[idx]);
+    recalc();render();save();};
   $('#slotOk').onclick=()=>{arr[idx]=inp.value.trim();closeSheet();regs();render();save();};
   $('#slotDel').onclick=()=>{arr[idx]='';closeSheet();regs();render();save();};
   openSheet(); setTimeout(()=>{try{inp.focus();inp.select();}catch(e){}},120);
 }
 $('#editBtn').onclick=()=>{editMode=!editMode;$('#editBtn').classList.toggle('on',editMode);
   toast(editMode?'人型を押すと番号を入れられます':'番号の入力を終わりました');};
+/* ---- 選手交代：控えとコートの選手を入れ替える ---- */
+let subSide='own', subIdx=-1;
+function subSheet(){
+  const arr=subSide==='own'?S.rostOwn:S.rostOpp;
+  const st =subSide==='own'?rotSteps(curRot()):oppSteps();
+  const L=lineOf(subSide);
+  const tm=t=>'<button class="b op'+(subSide===t?' on':'')+'" data-team="'+t+'" style="height:44px">'+
+    esc(t==='own'?(S.own||'自チーム'):(S.opp||'相手'))+'</button>';
+  let h='<h3>選手交代</h3><div class="rowline" style="margin:0">'+tm('own')+tm('opp')+'</div>';
+  if(subIdx<0){
+    h+='<div class="glab" style="width:auto;text-align:left;margin:12px 0 5px">コートに入る選手（控え）</div>'+
+      '<div class="rgrid" style="grid-template-columns:repeat(4,1fr)">'+[6,7,8,9,10,11,12,13].map(i=>
+        '<button class="b op" data-in="'+i+'" style="height:46px"'+(arr[i]?'':' disabled')+'>'+
+        esc(arr[i]||(i===6?'Li':'空'))+'</button>').join('')+'</div>'+
+      '<div class="note">控えが空欄のときは、設定タブか布陣の「番号を入れる」から先に登録してください。</div>';
+  }else{
+    h+='<div class="glab" style="width:auto;text-align:left;margin:12px 0 5px">'+
+      '<b style="color:var(--mark)">'+esc(arr[subIdx])+'</b> と交代でコートを出る選手</div>'+
+      '<div class="rgrid" style="grid-template-columns:repeat(3,1fr)">'+[4,3,2,5,6,1].map(z=>{
+        const slot=(z-1+st)%6, nm=arr[slot];
+        return '<button class="b op" data-out="'+z+'" style="height:52px;flex-direction:column;gap:1px"'+(nm?'':' disabled')+'>'+
+          '<span style="font-size:14px">'+esc(nm||'空')+'</span>'+
+          '<span style="font-size:8.5px;opacity:.75">ゾーン'+z+(L._li===z?' (リベロ中)':'')+'</span></button>';
+      }).join('')+'</div>'+
+      '<button class="big" style="margin-top:10px" id="subBack">入る選手を選び直す</button>';
+  }
+  h+='<button class="big go" style="margin-top:8px" id="subClose">閉じる</button>';
+  $('#sheetBody').innerHTML=h;
+  $('#sheetBody').querySelectorAll('[data-team]').forEach(b=>b.onclick=()=>{subSide=b.dataset.team;subIdx=-1;subSheet();});
+  $('#sheetBody').querySelectorAll('[data-in]').forEach(b=>b.onclick=()=>{subIdx=Number(b.dataset.in);subSheet();});
+  $('#sheetBody').querySelectorAll('[data-out]').forEach(b=>b.onclick=()=>{
+    const z=Number(b.dataset.out), slot=(z-1+st)%6;
+    const out=arr[slot], inn=arr[subIdx];
+    arr[slot]=inn; arr[subIdx]=out;
+    subIdx=-1;closeSheet();regs();recalc();render();save();sfx('rec');
+    toast('交代：'+esc(out)+' → '+esc(inn)+'（ゾーン'+z+'）');
+  });
+  const bk=$('#subBack'); if(bk)bk.onclick=()=>{subIdx=-1;subSheet();};
+  $('#subClose').onclick=()=>{subIdx=-1;closeSheet();};
+  openSheet();
+}
+$('#subBtn').onclick=()=>{ subSide=S.cur.side==='opp'?'opp':'own'; subIdx=-1; subSheet(); };
+
 /* 面の切り替え */
 function setFace(f){
   const line=(f==='line');
@@ -1974,16 +2063,30 @@ $$('.tabs button').forEach(b=>b.onclick=()=>{
 
 /* ---------------- 設定 ---------------- */
 function regs(){
-  const m=(el,arr)=>{el.innerHTML='';arr.forEach((v,i)=>{const inp=document.createElement('input');
-    inp.value=v;inp.placeholder=SLOTS[i%7];inp.maxLength=6;
-    inp.oninput=()=>{arr[i]=inp.value.trim();roster($('#rostOwn'),'own');roster($('#rostOpp'),'opp');save();};
-    el.appendChild(inp);});};
-  m($('#regOwn'),S.rostOwn);m($('#regOpp'),S.rostOpp);
+  const m=(el,arr,mb)=>{
+    el.innerHTML='';
+    arr.forEach((v,i)=>{const inp=document.createElement('input');
+      inp.value=v;inp.placeholder=SLOTS[i%7];inp.maxLength=6;
+      if(i<6&&mb[i])inp.classList.add('ismb');
+      inp.oninput=()=>{arr[i]=inp.value.trim();roster($('#rostOwn'),'own');roster($('#rostOpp'),'opp');render();save();};
+      el.appendChild(inp);});
+    /* 1〜6 の下に「ミドル」印の切替を並べる */
+    const row=document.createElement('div');row.className='mbrow';
+    for(let i=0;i<7;i++){
+      if(i===6){const sp=document.createElement('span');sp.className='mblab';sp.textContent='リベロ';row.appendChild(sp);continue;}
+      const b=document.createElement('button');b.className='mbtog'+(mb[i]?' on':'');b.textContent='ミドル';
+      b.onclick=()=>{mb[i]=!mb[i];regs();recalc();render();save();};
+      row.appendChild(b);
+    }
+    el.parentNode.insertBefore(row,el.nextSibling);
+  };
+  $$('.mbrow').forEach(x=>x.remove());
+  m($('#regOwn'),S.rostOwn,S.mbOwn);m($('#regOpp'),S.rostOpp,S.mbOpp);
 }
 $('#inOwn').oninput=e=>{S.own=e.target.value;render();save();};
 $('#inOpp').oninput=e=>{S.opp=e.target.value;render();save();};
 $('#inMatch').oninput=e=>{S.match=e.target.value;save();};
-const OPTS=[['optLineup','lineup'],['optSimple','simpleEval'],['optCoord','coord'],['optSuggest','suggest'],['optAutoRot','autoRot'],['optZone','zone'],['optWake','wake'],['optSound','sound'],['optVib','vib'],['optOppRoster','oppRoster']];
+const OPTS=[['optLibero','libero'],['optLineup','lineup'],['optSimple','simpleEval'],['optCoord','coord'],['optSuggest','suggest'],['optAutoRot','autoRot'],['optZone','zone'],['optWake','wake'],['optSound','sound'],['optVib','vib'],['optOppRoster','oppRoster']];
 OPTS.forEach(([id,k])=>{$('#'+id).onclick=()=>{S.opt[k]=!S.opt[k];syncOpts();
   if(k==='wake')wake(S.opt[k]);
   if(k==='lineup')setFace(S.opt.lineup?'line':'court');
@@ -2019,6 +2122,7 @@ function syncForm(){$('#inOwn').value=S.own;$('#inOpp').value=S.opp;$('#inMatch'
     ['貢献度','1プレーごとの良し悪しを足し合わせた数。/S は出場セット数で割った平均'],
     ['自 / 相','記録画面の左にある切替。「相」にすると相手チームのプレーを記録します。得点・失点は自動で反転します'],
     ['# + ! / − =','元ブックから引き継いだ評価記号。画面には言葉で出るので覚える必要はありません。書き出すデータにはこの記号が入ります（ブックの集計がこの記号を見ているため）'],
+    ['ミドル / リベロ','名簿で「ミドル」と印を付けた選手が後衛（ゾーン6・5）に回ると、布陣のその位置がリベロ（白いユニフォーム・緑のL）に入れ替わります。ゾーン1は自分のサーブ番なのでミドルが戻ります'],
     ['相手アタック','相手のスパイク。＃＝決まった（こちらの失点）、／＝味方がブロック、＝＝相手のミス（どちらもこちらの得点）']];
   $('#glossBody').innerHTML=G.map(([a,b])=>'<div style="margin-bottom:7px"><b style="color:var(--text)">'+esc(a)+'</b>　'+esc(b)+'</div>').join('');
 })();
@@ -2059,7 +2163,7 @@ window.addEventListener('resize',()=>applyOrient());
 window.addEventListener('orientationchange',()=>setTimeout(()=>applyOrient(true),150));
 
 /* ---------------- Service Worker ---------------- */
-const APP_VER='ver.19.0';
+const APP_VER='ver.21.0';
 $('#verLine').textContent='バレー記録 '+APP_VER;
 $('#btnUpdate').onclick=async()=>{toast('最新版を確認しています…');
   try{if('serviceWorker'in navigator){const r=await navigator.serviceWorker.getRegistration();if(r)await r.update();}}catch(e){}
