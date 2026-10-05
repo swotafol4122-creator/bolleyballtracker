@@ -103,7 +103,7 @@ svg.court{display:block;width:100%;height:100%;touch-action:none}
 #lineup{display:none}
 body.face-line #court{display:none}
 body.face-line #lineup{display:block}
-body.face-line #otBtn,body.face-line .cchip{display:none}
+body.face-line #otSeg,body.face-line .cchip{display:none}
 body:not(.face-line) #editBtn{display:none}
 body.zoom .facebtn,body.zoom #editBtn{display:none}
 /* ---- 操作バー ---- */
@@ -120,7 +120,7 @@ body.zoom .facebtn,body.zoom #editBtn{display:none}
 .ub.ls{color:var(--ls);border-color:rgba(255,93,93,.4)}
 .ub.q{flex:0 0 40px;font-size:15px;font-weight:800}
 .ub:active{transform:scale(.95);filter:brightness(.9)}
-#qSkill,#setBtn{flex:0 0 54px}
+#qSkill,#qU,#setBtn{flex:0 0 52px}
 /* ---- コート上に重ねる表示 ---- */
 .cchip{position:absolute;right:10px;top:9px;z-index:5;
   font-size:10px;font-weight:800;min-height:44px;min-width:76px;line-height:1.3;
@@ -181,6 +181,15 @@ body.face-line .hud{max-width:calc(100% - 24px)}
   padding:4px 8px;border-radius:9px;background:rgba(14,17,22,.55);color:#E7EDF5;text-align:center;
   border:1px solid rgba(255,255,255,.45)}
 .otbtn.on{background:var(--mark);color:#141821;border-color:var(--mark)}
+/* コース入力：2点 / 3点（ワンタッチ）の切替 */
+.otseg{position:absolute;left:10px;top:9px;z-index:5;display:flex;gap:2px;padding:2px;
+  border-radius:11px;background:rgba(14,17,22,.6);border:1px solid rgba(255,255,255,.4)}
+.ots{min-height:42px;min-width:52px;border-radius:9px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1px;color:#C9D4E0;padding:0 5px}
+.ots b{font-size:13px;font-weight:800;line-height:1}
+.ots i{font-style:normal;font-size:7.5px;font-weight:700;opacity:.8;line-height:1}
+.ots.on{background:var(--mark);color:#141821;box-shadow:0 1px 8px rgba(255,212,0,.35)}
+.ots:active{transform:scale(.94)}
 @keyframes rip{0%{transform:scale(.35);opacity:.95}100%{transform:scale(6.5);opacity:0}}
 .rip{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;
   border:2px solid rgba(255,212,0,.95);pointer-events:none;z-index:4;animation:rip .5s ease-out forwards}
@@ -390,7 +399,10 @@ tr.total td:first-child{background:#2A2418}
   <div class="courtpane">
     <svg class="court" id="court" viewBox="0 0 51 78" preserveAspectRatio="xMidYMid meet"></svg>
     <svg class="court" id="lineup" viewBox="0 0 51 78" preserveAspectRatio="xMidYMid meet"></svg>
-    <button class="otbtn" id="otBtn">ワンタッチ<br>3点入力</button>
+    <div class="otseg" id="otSeg">
+      <button class="ots" id="ot2"><b>2点</b><i>始点→終点</i></button>
+      <button class="ots" id="otBtn"><b>3点</b><i>ワンタッチ</i></button>
+    </div>
     <button class="otbtn edit" id="editBtn">番号を<br>入れる</button>
     <button class="facebtn" id="faceBtn">コースへ</button>
     <button class="cchip" id="cChip">コース 0/2</button>
@@ -416,8 +428,8 @@ tr.total td:first-child{background:#2A2418}
     <div class="util" id="lastLine">
       <button class="ub pt" id="qP"><span>相手ミス<em>+1</em></span></button>
       <button class="ub ls" id="qL"><span>自ミス<em>−1</em></span></button>
-      <button class="ub" id="qSkill">スキル</button>
-      <button class="ub" id="qU">取消</button>
+      <button class="ub" id="qSkill"><span>もどる<em>入力</em></span></button>
+      <button class="ub" id="qU"><span>取消<em>記録</em></span></button>
       <button class="ub" id="setBtn">セット</button>
       <button class="ub q" id="qHelp">?</button>
     </div>
@@ -1234,7 +1246,7 @@ function render(){
     $('#evalGrid').style.display=step===2?'':'none';   // そろうまで評価は出さない
   }else{ $('#stepRost').style.display='';$('#stepSkill').style.display='';
          $('.detail').style.display='';$('#evalGrid').style.display=''; }
-  $('#qSkill').style.display=S.opt.lineup?'':'none';
+
   const pri=c.side==='opp'?'opp':'own', sec=c.side==='opp'?'own':'opp';
   roster($('#rostOwn'),pri); roster($('#rostOpp'),sec);
   $('#rostOpp').style.display=S.opt.oppRoster?'':'none';
@@ -1257,9 +1269,9 @@ function render(){
   $('#evalGrid').classList.toggle('ready',!!c.skill&&!!(c.side==='opp'?c.pOpp:c.pOwn));
 
   renderEval();
-  const ob=$('#otBtn');
-  ob.classList.toggle('on',c.ot);
-  ob.innerHTML=c.ot?'ワンタッチ<br>3点入力':'2点入力<br>始点→終点';
+  $('#ot2').classList.toggle('on',!c.ot);
+  $('#otBtn').classList.toggle('on',c.ot);
+  if(c.taps.length||c.skill||c.pOwn||c.pOpp)ensureHist();
   updateLast();
   if(S.opt.lineup&&document.body.classList.contains('face-line'))drawLineup(); else drawCourt();
   $('#faceBtn').style.display=S.opt.lineup?'':'none';
@@ -1442,9 +1454,25 @@ function drawScatter(list,names,setNo){
 $('#anaSet').onchange=renderAna; $('#scAction').onchange=renderAna;
 
 $('#qHelp').onclick=critSheet;
-$('#qSkill').onclick=()=>{ if(!S.cur.skill)return toast('先に選手を選んでください');
-  S.cur.skill='';S.cur.serve='';S.cur.toss='';S.cur.spike='';renderSkills();
-  if(S.opt.lineup)setFace('line'); render();save(); };
+/* 間違えたときに1つ前へ。シート→拡大→タブ→コース→スキル→選手 の順にほどける */
+function stepBack(){
+  if($('#mask').classList.contains('on')){closeSheet();return true;}
+  if(document.body.classList.contains('zoom')){setZoom(false);return true;}
+  const tab=$$('.tabs button').find(b=>b.classList.contains('on'));
+  if(tab&&tab.dataset.tab!=='rec'){$$('.tabs button')[0].click();return true;}
+  const c=S.cur;
+  if(c.taps.length){c.taps=[];drawCourt();updateLast();save();sfx('undo');toast('コースを消しました');return true;}
+  if(c.skill){c.skill='';c.serve='';c.toss='';c.spike='';renderSkills();
+    if(S.opt.lineup)setFace('line');render();save();sfx('undo');toast('スキルを選び直してください');return true;}
+  if(c.pOwn||c.pOpp){c.pOwn='';c.pOpp='';c.side='own';renderSkills();
+    if(S.opt.lineup)setFace('line');render();save();sfx('undo');toast('選手を選び直してください');return true;}
+  return false;
+}
+$('#qSkill').onclick=()=>{ if(!stepBack())toast('戻るところがありません'); };
+/* 端末の「戻る」も同じ動きにする（1回で閉じないように） */
+let histOn=false;
+function ensureHist(){ if(histOn)return; try{history.pushState({v:1},'');histOn=true;}catch(e){} }
+window.addEventListener('popstate',()=>{ histOn=false; if(stepBack())ensureHist(); });
 $('#qP').onclick=()=>direct(true);
 $('#qL').onclick=()=>direct(false);
 $('#qU').onclick=()=>{
@@ -1453,6 +1481,7 @@ $('#qU').onclick=()=>{
   toast('取り消し：'+esc(nameOf(e))+' '+(SKILL_L[e.skill]||e.skill));
 };
 function setZoom(on){
+  if(on)ensureHist();
   document.body.classList.toggle('zoom',on);
   updateLast();
   requestAnimationFrame(drawCourt);
@@ -1460,14 +1489,16 @@ function setZoom(on){
 $('#cChip').onclick=()=>setZoom(!document.body.classList.contains('zoom'));
 $('#doneBtn').onclick=()=>setZoom(false);
 
-$('#otBtn').onclick=()=>{
-  const on=!S.cur.ot;
+function setOT(on){
+  if(S.cur.ot===on){render();return;}
   S.cur.ot=on;
   if(baseSkill(S.cur.skill)!=='ブロック')S.otPref=on;
   if(!on&&S.cur.taps.length>2)S.cur.taps=S.cur.taps.slice(0,2);
   render();save();
   toast(on?'3点入力：始点 → 当たった点 → 終点':'2点入力：始点 → 終点');
-};
+}
+$('#ot2').onclick=()=>setOT(false);
+$('#otBtn').onclick=()=>setOT(true);
 
 /* ================= 布陣（コート上の6人）=================
    名簿の 1〜6 番目が「開始時のゾーン1〜6」。①がサーバーの位置。
@@ -1677,7 +1708,7 @@ function editRec(i){
   $('#okRec').onclick=closeSheet;
   openSheet();
 }
-function openSheet(){$('#mask').classList.add('on');$('#sheet').classList.add('on');}
+function openSheet(){ensureHist();$('#mask').classList.add('on');$('#sheet').classList.add('on');}
 function closeSheet(){$('#mask').classList.remove('on');$('#sheet').classList.remove('on');}
 $('#mask').onclick=closeSheet;
 $('#listSet').onchange=renderList;
@@ -1938,7 +1969,7 @@ $$('.tabs button').forEach(b=>b.onclick=()=>{
   if(b.dataset.tab==='map')renderMapUI();
   if(b.dataset.tab==='ana')renderAna();
   if(b.dataset.tab==='rec'){ if(S.opt.lineup&&document.body.classList.contains('face-line'))drawLineup(); else drawCourt(); }
-  else setZoom(false);
+  else { setZoom(false); ensureHist(); }
 });
 
 /* ---------------- 設定 ---------------- */
@@ -2028,7 +2059,7 @@ window.addEventListener('resize',()=>applyOrient());
 window.addEventListener('orientationchange',()=>setTimeout(()=>applyOrient(true),150));
 
 /* ---------------- Service Worker ---------------- */
-const APP_VER='ver.18.1';
+const APP_VER='ver.19.0';
 $('#verLine').textContent='バレー記録 '+APP_VER;
 $('#btnUpdate').onclick=async()=>{toast('最新版を確認しています…');
   try{if('serviceWorker'in navigator){const r=await navigator.serviceWorker.getRegistration();if(r)await r.update();}}catch(e){}
